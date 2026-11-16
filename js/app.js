@@ -10,7 +10,11 @@
     draft: { goal: "travel", minutes: 25, particle: "both" },
     mix: false,
     session: null,
-    talk: null
+    talk: null,
+    account: false,
+    accountBusy: false,
+    accountError: "",
+    accountDraft: { username: "", password: "" }
   };
 
   function esc(value) {
@@ -202,6 +206,29 @@
     toast._t = setTimeout(function () { el.classList.remove("show"); }, 4600);
   }
 
+  function accountBar() {
+    const session = window.Account && Account.session();
+    if (!session) {
+      return '<div class="account-bar"><span><b class="account-name">未登录</b><small class="account-status">进度只在本机</small></span><button type="button" data-act="account">登录</button></div>';
+    }
+    return '<div class="account-bar"><span><b class="account-name">' + esc(session.username) + '</b><small class="account-status">' + esc(Account.statusLabel()) + '</small></span><button type="button" data-act="logout">退出</button></div>';
+  }
+
+  function accountModal() {
+    if (!UI.account) return "";
+    const draft = UI.accountDraft;
+    return '<div class="modal-back" data-act="close-account"><form class="modal-card" data-account-form data-act="account-card" autocomplete="on">' +
+      '<p class="eyebrow">账号</p><h2>登录后，换设备也能继续</h2>' +
+      '<p class="muted">学习进度保存在账号中。在其他设备打开本站，用同一用户名和密码登录，即可看到同一份进度。</p>' +
+      '<label class="field">用户名<input id="acct-user" name="username" autocomplete="username" maxlength="20" spellcheck="false" value="' + esc(draft.username) + '"></label>' +
+      '<label class="field">密码<input id="acct-pass" name="password" type="password" autocomplete="current-password" maxlength="72" value="' + esc(draft.password) + '"></label>' +
+      (UI.accountError ? '<p class="form-error">' + esc(UI.accountError) + "</p>" : "") +
+      '<div class="row modal-actions"><button class="btn btn-primary" type="submit">登录</button>' +
+      '<button class="btn btn-ghost" type="button" data-act="signup">注册</button>' +
+      '<button class="btn btn-ghost" type="button" data-act="close-account">取消</button></div>' +
+      '<p class="hint">请先注册，再用同一用户名在其他设备登录。退出后，这台设备仍保留当前进度，但不再继续同步。</p></form></div>';
+  }
+
   function sidebar() {
     const items = [
       ["today", "今日", "本日安排"],
@@ -225,6 +252,7 @@
         return '<button type="button" class="nav-btn' + (UI.nav === item[0] ? " is-on" : "") + '" data-act="nav" data-view="' + item[0] + '"><span>' + item[1] + "</span><small>" + item[2] + "</small></button>";
       }).join("") +
       "</nav>" +
+      accountBar() +
       '<p class="nav-meta">连续 ' + streak + " 天 · " + Store.get().xp + " 分</p></aside>";
   }
 
@@ -277,7 +305,8 @@
       "</div><div class=\"onboard-form\"><h2>确定十四天的安排</h2>" +
       prefPicks() +
       '<button type="button" class="btn btn-primary" data-act="onboard">按此开始十四天</button>' +
-      '<p class="hint">进度只保存在本机浏览器中。礼貌词以后可在计划中修改。</p></div></section>';
+      '<p class="hint">未登录时，进度只保存在本机浏览器中。登录后，换设备用同一账号即可继续。礼貌词以后可在计划中修改。</p>' +
+      '<button type="button" class="btn btn-ghost" data-act="account">登录或注册</button></div></section>';
   }
 
   function viewToday() {
@@ -395,8 +424,10 @@
       "<li>受到称赞时，先说 ไม่เก่ง พูดได้นิดหน่อย。</li></ul>" +
       '<button type="button" class="btn btn-ghost" data-act="nav" data-view="talk">查看情景和常用句</button></section>' +
       '<section class="card"><h2>语音</h2><p>系统有泰语语音时使用本机发音，否则使用在线发音，需要网络。语音识别不作评分。识别经常出错，因此每题都可以自行标记「已经说顺」。</p>' +
-      '<p class="hint">直接双击网页时，麦克风可能不可用。请双击 start.bat，再用浏览器打开 http://localhost:8765 。</p>' +
-      '<button type="button" class="btn btn-ghost" data-act="reset">清空本机浏览器中的进度</button></section></div>';
+      '<p class="hint">直接双击网页时，麦克风可能不可用。请双击 start.bat，再用浏览器打开 http://localhost:8765 。</p></section>' +
+      '<section class="card"><h2>账号与进度</h2><p>登录后，学习进度保存在账号中。换一台设备，打开本站并登录同一用户名，即可继续。未登录时，进度只保存在本机浏览器中。</p>' +
+      '<p class="hint">清空时，若另一台设备仍留有未同步的记录，下次同步会合并回来，以免进度丢失。</p>' +
+      '<button type="button" class="btn btn-ghost" data-act="reset">清空学习记录</button></section></div>';
   }
 
   function slicePage(arr, page, size) {
@@ -1009,16 +1040,89 @@
       draw();
       return;
     }
+    if (act === "account") {
+      UI.account = true;
+      UI.accountError = "";
+      draw();
+      return;
+    }
+    if (act === "account-card") return;
+    if (act === "close-account") {
+      UI.account = false;
+      UI.accountError = "";
+      draw();
+      return;
+    }
+    if (act === "signup") {
+      submitAccount("signup");
+      return;
+    }
+    if (act === "logout") {
+      Account.logout();
+      toast("已退出。这台设备仍保留当前进度，但不再继续同步。");
+      draw();
+      return;
+    }
     if (act === "reset") {
-      if (window.confirm("清空本机浏览器中的学习记录？")) {
-        Store.reset();
+      const loggedIn = window.Account && Account.session();
+      const message = loggedIn
+        ? "清空这台设备和账号中的学习记录？若另一台设备仍留有未同步的记录，下次同步时会合并回来。"
+        : "清空本机浏览器中的学习记录？";
+      if (!window.confirm(message)) return;
+      const done = function () {
         UI.view = "today";
         UI.nav = "today";
         UI.session = null;
         UI.talk = null;
         draw();
+      };
+      if (loggedIn) {
+        Account.wipe().then(function () { done(); }).catch(function () {
+          toast("账号里的进度没有清空。本机记录仍保留。");
+        });
+        return;
       }
+      Store.reset();
+      done();
     }
+  }
+
+  function readAccountDraft() {
+    const user = document.getElementById("acct-user");
+    const pass = document.getElementById("acct-pass");
+    if (user) UI.accountDraft.username = user.value;
+    if (pass) UI.accountDraft.password = pass.value;
+  }
+
+  function submitAccount(kind) {
+    if (UI.accountBusy) return;
+    readAccountDraft();
+    const name = String(UI.accountDraft.username || "").trim();
+    if (!/^[\u4e00-\u9fffA-Za-z0-9_]{2,20}$/.test(name)) {
+      UI.accountError = "用户名须为 2 到 20 位，可使用中文、字母、数字和下划线。";
+      draw();
+      return;
+    }
+    if (!UI.accountDraft.password || UI.accountDraft.password.length < 6) {
+      UI.accountError = "密码至少 6 位。";
+      draw();
+      return;
+    }
+    UI.accountBusy = true;
+    document.querySelectorAll(".modal-card button").forEach(function (node) { node.disabled = true; });
+    const task = kind === "signup" ? Account.signup(UI.accountDraft) : Account.login(UI.accountDraft);
+    task.then(function () {
+      UI.accountBusy = false;
+      UI.account = false;
+      UI.accountError = "";
+      UI.accountDraft.password = "";
+      toast(kind === "signup" ? "注册完成。此后进度保存在这个账号中。" : "已登录。此后进度保存在这个账号中。");
+      draw();
+    }).catch(function (err) {
+      UI.accountBusy = false;
+      UI.accountError = (err && err.message) || "没有完成。";
+      draw();
+    });
   }
 
   function onKey(event) {
@@ -1050,6 +1154,10 @@
     if (log) log.scrollTop = log.scrollHeight;
     const names = { today: "今日", plan: "计划", words: "单词", listen: "听音", sentence: "听句", speak: "开口", talk: "对话", review: "复习", method: "方法", session: "练习" };
     document.title = (names[UI.view] || "ได้ยิน") + " · ได้ยิน";
+    if (UI.account && document.activeElement === document.body) {
+      const user = document.getElementById("acct-user");
+      if (user) user.focus();
+    }
   }
 
   function draw() {
@@ -1066,11 +1174,20 @@
     else if (UI.view === "review") html = shell(viewReview());
     else if (UI.view === "method") html = shell(viewMethod());
     else html = shell(viewToday());
-    root.innerHTML = html;
+    root.innerHTML = html + accountModal();
     afterDraw();
   }
 
   document.body.addEventListener("click", onClick);
+  document.body.addEventListener("submit", function (event) {
+    if (!event.target.closest("[data-account-form]")) return;
+    event.preventDefault();
+    submitAccount("login");
+  });
   document.addEventListener("keydown", onKey);
+  window.addEventListener("daiyin-sync", function () {
+    if (UI.account) return;
+    draw();
+  });
   draw();
 })();

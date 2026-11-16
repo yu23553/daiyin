@@ -20,6 +20,10 @@
     return dateKey(d);
   }
 
+  function zeroPending() {
+    return { xp: 0, listenCorrect: 0, listenTotal: 0, speakGood: 0, speakTotal: 0, sessions: 0 };
+  }
+
   function blank() {
     return {
       profile: null,
@@ -29,30 +33,118 @@
       srs: {},
       awards: {},
       lessons: {},
-      offline: {}
+      offline: {},
+      pending: zeroPending(),
+      ledger: {},
+      deviceId: "",
+      synced: false,
+      dirty: false,
+      updatedAt: ""
     };
   }
 
-  let state = blank();
+  function readDeviceId() {
+    const key = "daiyin-device-v1";
+    try {
+      let id = localStorage.getItem(key);
+      if (!id || !/^[a-z0-9]{8,40}$/i.test(id)) {
+        id = Date.now().toString(16) + Math.random().toString(16).slice(2, 10);
+        localStorage.setItem(key, id);
+      }
+      return id;
+    } catch (err) {
+      return "localdevice";
+    }
+  }
 
-  function save() {
+  function ensureLedger() {
+    const id = readDeviceId();
+    state.deviceId = id;
+    if (!state.ledger || typeof state.ledger !== "object" || Array.isArray(state.ledger)) state.ledger = {};
+    if (!state.ledger[id]) {
+      const hasRows = Object.keys(state.ledger).length > 0;
+      const hasLocal = state.xp || state.stats.listenTotal || state.stats.speakTotal || state.stats.sessions;
+      if (!hasRows && hasLocal && !state.synced) {
+        state.ledger[id] = {
+          xp: state.xp,
+          listenCorrect: state.stats.listenCorrect,
+          listenTotal: state.stats.listenTotal,
+          speakGood: state.stats.speakGood,
+          speakTotal: state.stats.speakTotal,
+          sessions: state.stats.sessions
+        };
+      } else {
+        state.ledger[id] = zeroPending();
+      }
+    }
+    return id;
+  }
+
+  function sumLedger(ledger) {
+    const stats = blank().stats;
+    let xp = 0;
+    Object.keys(ledger || {}).forEach(function (id) {
+      const row = ledger[id] || {};
+      xp += row.xp || 0;
+      stats.listenCorrect += row.listenCorrect || 0;
+      stats.listenTotal += row.listenTotal || 0;
+      stats.speakGood += row.speakGood || 0;
+      stats.speakTotal += row.speakTotal || 0;
+      stats.sessions += row.sessions || 0;
+    });
+    if (stats.listenCorrect > stats.listenTotal) stats.listenTotal = stats.listenCorrect;
+    if (stats.speakGood > stats.speakTotal) stats.speakTotal = stats.speakGood;
+    return { xp: xp, stats: stats };
+  }
+
+  let state = blank();
+  let seq = 0;
+
+  function save(opts) {
+    state.updatedAt = new Date().toISOString();
+    if (!opts || !opts.silent) {
+      seq += 1;
+      state.dirty = true;
+    }
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
     } catch (err) { /* private mode */ }
+    if (!opts || !opts.silent) {
+      if (window.Account && Account.onLocalSave) Account.onLocalSave();
+    }
+  }
+
+  function adopt(data, keepDirty) {
+    const next = data || blank();
+    state = Object.assign(blank(), next);
+    state.stats = Object.assign(blank().stats, next.stats || {});
+    state.streak = Object.assign(blank().streak, next.streak || {});
+    state.pending = Object.assign(zeroPending(), next.pending || {});
+    state.srs = next.srs && typeof next.srs === "object" ? next.srs : {};
+    state.awards = next.awards && typeof next.awards === "object" ? next.awards : {};
+    state.lessons = next.lessons && typeof next.lessons === "object" ? next.lessons : {};
+    state.offline = next.offline && typeof next.offline === "object" ? next.offline : {};
+    state.synced = !!next.synced;
+    state.deviceId = typeof next.deviceId === "string" ? next.deviceId : "";
+    try {
+      state.ledger = JSON.parse(JSON.stringify(next.ledger && typeof next.ledger === "object" ? next.ledger : {}));
+    } catch (err) {
+      state.ledger = {};
+    }
+    state.dirty = keepDirty ? !!next.dirty : false;
+    ensureLedger();
+    if (!keepDirty) save({ silent: true });
+  }
+
+  function applyState(next) {
+    adopt(next, false);
   }
 
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return;
-      const data = JSON.parse(raw);
-      state = Object.assign(blank(), data);
-      state.stats = Object.assign(blank().stats, data.stats || {});
-      state.streak = Object.assign(blank().streak, data.streak || {});
-      state.srs = data.srs || {};
-      state.awards = data.awards || {};
-      state.lessons = data.lessons || {};
-      state.offline = data.offline || {};
+      adopt(JSON.parse(raw), true);
     } catch (err) {
       state = blank();
     }
@@ -144,6 +236,8 @@
     if (state.awards[today][key]) return 0;
     state.awards[today][key] = true;
     state.xp += xp;
+    ensureLedger();
+    state.ledger[state.deviceId].xp += xp;
     touchStreak();
     save();
     return xp;
@@ -170,6 +264,7 @@
       card.ease = Math.max(1.5, card.ease - 0.2);
       card.due = dateKey();
     }
+    card.touched = new Date().toISOString();
     save();
   }
 
@@ -189,19 +284,31 @@
   }
 
   function noteListen(ok) {
+    ensureLedger();
     state.stats.listenTotal += 1;
-    if (ok) state.stats.listenCorrect += 1;
+    state.ledger[state.deviceId].listenTotal += 1;
+    if (ok) {
+      state.stats.listenCorrect += 1;
+      state.ledger[state.deviceId].listenCorrect += 1;
+    }
     save();
   }
 
   function noteSpeak(good) {
+    ensureLedger();
     state.stats.speakTotal += 1;
-    if (good) state.stats.speakGood += 1;
+    state.ledger[state.deviceId].speakTotal += 1;
+    if (good) {
+      state.stats.speakGood += 1;
+      state.ledger[state.deviceId].speakGood += 1;
+    }
     save();
   }
 
   function noteSession() {
+    ensureLedger();
     state.stats.sessions += 1;
+    state.ledger[state.deviceId].sessions += 1;
     save();
   }
 
@@ -211,7 +318,8 @@
       minutes: Number(draft.minutes),
       particle: draft.particle,
       startedAt: dateKey(),
-      onboarded: true
+      onboarded: true,
+      profileAt: new Date().toISOString()
     };
     save();
   }
@@ -222,6 +330,7 @@
       state.profile[key] = partial[key];
     });
     if (partial.minutes) state.profile.minutes = Number(partial.minutes);
+    state.profile.profileAt = new Date().toISOString();
     save();
   }
 
@@ -250,7 +359,44 @@
 
   function reset() {
     state = blank();
-    save();
+    save({ silent: true });
+  }
+
+  function snapshotPending() {
+    return Object.assign(zeroPending(), state.pending || {});
+  }
+
+  function consumePending(sent) {
+    const pending = snapshotPending();
+    Object.keys(pending).forEach(function (key) {
+      pending[key] = Math.max(0, (pending[key] || 0) - ((sent && sent[key]) || 0));
+    });
+    state.pending = pending;
+    save({ silent: true });
+  }
+
+  function settle(serverState) {
+    ensureLedger();
+    const id = state.deviceId;
+    const current = Object.assign(zeroPending(), state.ledger[id]);
+    applyState(serverState || blank());
+    const row = Object.assign(zeroPending(), state.ledger[id]);
+    let extra = false;
+    Object.keys(zeroPending()).forEach(function (key) {
+      const more = Math.max(0, (current[key] || 0) - (row[key] || 0));
+      if (more) {
+        row[key] += more;
+        extra = true;
+      }
+    });
+    state.ledger[id] = row;
+    const sum = sumLedger(state.ledger);
+    state.xp = sum.xp;
+    state.stats = sum.stats;
+    state.synced = true;
+    state.dirty = extra;
+    save({ silent: true });
+    if (extra && window.Account && Account.onLocalSave) Account.onLocalSave();
   }
 
   function cycleDays() {
@@ -294,6 +440,15 @@
     accuracy: accuracy,
     reset: reset,
     cycleDays: cycleDays,
-    knownCount: function () { return Object.keys(state.srs).length; }
+    knownCount: function () { return Object.keys(state.srs).length; },
+    exportState: function () {
+      ensureLedger();
+      return JSON.parse(JSON.stringify(state));
+    },
+    seq: function () { return seq; },
+    snapshotPending: snapshotPending,
+    consumePending: consumePending,
+    settle: settle,
+    applyState: applyState
   };
 })();
