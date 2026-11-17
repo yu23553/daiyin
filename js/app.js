@@ -11,6 +11,8 @@
     mix: false,
     session: null,
     talk: null,
+    fsiLevel: "A0",
+    fsiUnit: 1,
     account: false,
     accountBusy: false,
     accountError: "",
@@ -233,6 +235,7 @@
     const items = [
       ["today", "今日", "本日安排"],
       ["plan", "计划", "十四天"],
+      ["levels", "分级", "五级"],
       ["words", "单词", "分课"],
       ["listen", "听音", "听辨"],
       ["sentence", "听句", "先译后选"],
@@ -341,6 +344,82 @@
       prefPicks() + '<div class="plan-list">' + rows + "</div>";
   }
 
+  function fsiUnits(levelId) {
+    return (window.FSI ? FSI.units : []).filter(function (unit) { return unit.level === levelId; });
+  }
+
+  function fsiLine(line) {
+    return '<article class="task"><div>' + thaiBlock(line.thai) + romanBlock(line.roman) +
+      (line.en ? '<p class="muted">原课文：' + esc(line.en) + "</p>" : "") +
+      "</div>" + listenControls(line.thai) + "</article>";
+  }
+
+  function viewLevels() {
+    if (!window.FSI) {
+      return '<header class="page-head"><h1>分级课程没有载入</h1><p class="lead">请刷新页面。若仍没有，说明课程文件没有随网页一起打开。</p></header>';
+    }
+    const tones = FSI.tones.slice(0, 4).map(function (text) { return "<p>" + esc(text) + "</p>"; }).join("");
+    const cards = FSI.levels.map(function (level) {
+      const units = fsiUnits(level.id);
+      const done = units.filter(function (unit) { return Store.lessonSeen("fsi-" + unit.n); }).length;
+      return '<button type="button" class="pick" data-act="fsi-level" data-id="' + level.id + '"><strong>' + esc(level.id) + " · " + esc(level.title) + "</strong><span>" +
+        esc(level.range) + " · " + esc(level.days) + " · 已学 " + done + " / " + units.length + "</span></button>";
+    }).join("");
+    return '<header class="page-head"><p class="eyebrow">分级</p><h1>按五段学习四十课</h1><p class="lead">这一套不取代十四天听说计划。十四天仍从「今日」进入。分级按课文难度排列，原课程本身没有 A0 到 B2 的标记。</p></header>' +
+      '<div class="stack"><section class="card"><h2>声调</h2>' + tones +
+      '<button type="button" class="btn btn-primary" data-act="start-session" data-mode="lesson" data-lesson="tones">听辨声调</button></section>' +
+      '<div><p class="eyebrow">学习计划</p><div class="picks">' + cards + "</div></div>" +
+      '<section class="card"><h2>课文从哪里来</h2><p>' + esc(FSI.tones[4]) + "</p></section></div>";
+  }
+
+  function viewFsiLevel() {
+    const level = FSI.levels.filter(function (item) { return item.id === UI.fsiLevel; })[0] || FSI.levels[0];
+    const units = fsiUnits(level.id);
+    let day = level.id === "A0" ? 2 : 1;
+    const rows = [];
+    if (level.id === "A0") {
+      rows.push('<button type="button" class="plan-row" data-act="start-session" data-mode="lesson" data-lesson="tones"><span class="day-no">1</span><span><strong>五个声调</strong><small>先听辨，再进入课文</small></span></button>');
+    }
+    units.forEach(function (unit) {
+      const seen = Store.lessonSeen("fsi-" + unit.n);
+      rows.push('<button type="button" class="plan-row' + (seen ? " is-done" : "") + '" data-act="fsi-unit" data-n="' + unit.n + '"><span class="day-no">' + day + "</span><span><strong>第 " +
+        unit.n + " 课 · " + esc(unit.zh) + "</strong><small>" + (seen ? "已学" : "未学") +
+        (unit.sourceTitle ? " · " + esc(unit.sourceTitle) : "") + "</small></span></button>");
+      day += 1;
+    });
+    const review = level.id === "A0"
+      ? '<section class="card"><h2>第 ' + day + ' 天 · 复习</h2><p>把第 1–4 课的课文各跟读一遍。听不清的词须回到该课词表。</p></section>'
+      : "";
+    return '<header class="page-head"><p class="eyebrow">' + esc(level.id) + " · " + esc(level.days) + '</p><h1>' + esc(level.title) + '</h1><p class="lead">' + esc(level.can) + '</p></header>' +
+      '<button type="button" class="btn btn-ghost" data-act="nav" data-view="levels">返回分级</button>' +
+      '<div class="plan-list">' + rows.join("") + "</div>" + review;
+  }
+
+  function viewFsiUnit() {
+    const unit = FSI.units.filter(function (item) { return item.n === UI.fsiUnit; })[0];
+    if (!unit) return '<header class="page-head"><h1>没有这一课</h1></header><button type="button" class="btn btn-ghost" data-act="nav" data-view="levels">返回分级</button>';
+    const seen = Store.lessonSeen("fsi-" + unit.n);
+    const dialog = unit.dialog.length
+      ? unit.dialog.map(fsiLine).join("")
+      : '<p class="hint">这一课在原页是连贯短文，或原页没有载入对白。完整课文须打开原课收听。</p>';
+    const vocab = unit.vocab.length
+      ? unit.vocab.map(function (word) {
+        return '<details class="word"><summary><span class="thai" lang="th">' + esc(word.thai) + "</span><span>" + esc(word.en || "") + "</span></summary><div class=\"word-body\">" +
+          romanBlock(word.roman) + listenControls(word.thai) + "</div></details>";
+      }).join("")
+      : '<p class="hint">这一课的词表须在原课查看。</p>';
+    const prev = unit.n > 1 ? '<button type="button" class="btn btn-ghost" data-act="fsi-unit" data-n="' + (unit.n - 1) + '">上一课</button>' : "";
+    const next = unit.n < FSI.units.length ? '<button type="button" class="btn btn-ghost" data-act="fsi-unit" data-n="' + (unit.n + 1) + '">下一课</button>' : "";
+    return '<header class="page-head"><p class="eyebrow">' + esc(unit.level) + " · 第 " + unit.n + ' 课</p><h1>' + esc(unit.zh) + '</h1><p class="lead">' + esc(unit.aim) + "</p></header>" +
+      '<div class="row"><button type="button" class="btn btn-ghost" data-act="fsi-level" data-id="' + unit.level + '">返回本级</button>' +
+      '<button type="button" class="btn ' + (seen ? "btn-ghost" : "btn-primary") + '" data-act="fsi-done" data-n="' + unit.n + '">' + (seen ? "已记入进度" : "记入进度") + "</button>" +
+      '<a class="btn btn-ghost" href="' + esc(unit.url) + '" target="_blank" rel="noopener">打开原课</a></div>' +
+      (unit.sourceTitle ? '<p class="hint">原课标题：' + esc(unit.sourceTitle) + "</p>" : "") +
+      '<section class="stack"><h2>课文</h2>' + dialog + "</section>" +
+      '<section class="stack"><h2>配套词汇</h2><p class="muted">每课只收一组。词义为原课文英文。</p>' + vocab + "</section>" +
+      '<div class="row">' + prev + next + "</div>";
+  }
+
   function wordMark(id) {
     const card = Store.card(id);
     if (!card) return "";
@@ -423,6 +502,8 @@
       "<li>地名和价格听不清时，说 ช่วยเขียนให้หน่อย。</li>" +
       "<li>受到称赞时，先说 ไม่เก่ง พูดได้นิดหน่อย。</li></ul>" +
       '<button type="button" class="btn btn-ghost" data-act="nav" data-view="talk">查看情景和常用句</button></section>' +
+      '<section class="card"><h2>分级课文</h2><p>侧栏「分级」另有四十课，取自美国外交学院《泰语基础教程》。课文按 A0 到 B2 分成五段，每天一课。十四天听说计划仍然保留。</p>' +
+      '<button type="button" class="btn btn-ghost" data-act="nav" data-view="levels">打开分级</button></section>' +
       '<section class="card"><h2>语音</h2><p>系统有泰语语音时使用本机发音，否则使用在线发音，需要网络。语音识别不作评分。识别经常出错，因此每题都可以自行标记「已经说顺」。</p>' +
       '<p class="hint">直接双击网页时，麦克风可能不可用。请双击 start.bat，再用浏览器打开 http://localhost:8765 。</p></section>' +
       '<section class="card"><h2>账号与进度</h2><p>登录后，学习进度保存在账号中。换一台设备，打开本站并登录同一用户名，即可继续。未登录时，进度只保存在本机浏览器中。</p>' +
@@ -894,6 +975,32 @@
       return;
     }
     if (act === "nav") return go(button.dataset.view);
+    if (act === "fsi-level") {
+      Speech.stop();
+      UI.view = "fsi-level";
+      UI.nav = "levels";
+      UI.fsiLevel = button.dataset.id || "A0";
+      UI.session = null;
+      UI.talk = null;
+      draw();
+      return;
+    }
+    if (act === "fsi-unit") {
+      Speech.stop();
+      UI.view = "fsi-unit";
+      UI.nav = "levels";
+      UI.fsiUnit = Number(button.dataset.n);
+      UI.session = null;
+      UI.talk = null;
+      draw();
+      return;
+    }
+    if (act === "fsi-done") {
+      Store.markLesson("fsi-" + button.dataset.n);
+      toast("这一课已记入进度。登录同一账号后，换设备仍可看见。");
+      draw();
+      return;
+    }
     if (act === "pref") {
       const field = button.dataset.field;
       const value = field === "minutes" ? Number(button.dataset.val) : button.dataset.val;
@@ -1152,7 +1259,7 @@
     if (say) Speech.speak(say);
     const log = document.querySelector(".chat-log");
     if (log) log.scrollTop = log.scrollHeight;
-    const names = { today: "今日", plan: "计划", words: "单词", listen: "听音", sentence: "听句", speak: "开口", talk: "对话", review: "复习", method: "方法", session: "练习" };
+    const names = { today: "今日", plan: "计划", levels: "分级", "fsi-level": "分级", "fsi-unit": "课文", words: "单词", listen: "听音", sentence: "听句", speak: "开口", talk: "对话", review: "复习", method: "方法", session: "练习" };
     document.title = (names[UI.view] || "ได้ยิน") + " · ได้ยิน";
     if (UI.account && document.activeElement === document.body) {
       const user = document.getElementById("acct-user");
@@ -1166,6 +1273,9 @@
     if (!Store.get().profile) html = viewOnboard();
     else if (UI.view === "session" && UI.session) html = shell(viewSession());
     else if (UI.view === "plan") html = shell(viewPlan());
+    else if (UI.view === "levels") html = shell(viewLevels());
+    else if (UI.view === "fsi-level") html = shell(viewFsiLevel());
+    else if (UI.view === "fsi-unit") html = shell(viewFsiUnit());
     else if (UI.view === "words") html = shell(viewWords());
     else if (UI.view === "listen") html = shell(viewListen());
     else if (UI.view === "sentence") html = shell(viewSentence());
