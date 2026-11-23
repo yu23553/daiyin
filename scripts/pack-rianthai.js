@@ -1,12 +1,12 @@
-﻿// 打包 RianThai：核心包 + 按等级拆分的词库包。
-// 用法：node pack-rianthai.js <dest>   （cwd 须为项目根目录）
+﻿// 打包 RianThai：核心包 + 按等级拆分的词库包；部署产物自动注入缓存版本号。
+// 用法：node scripts/pack-rianthai.js [dest]
+// 不传 dest 时默认写到系统临时目录 daiyin-pages
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const vm = require("vm");
+const crypto = require("crypto");
 
-// 用法：node scripts/pack-rianthai.js [dest]
-// 不传 dest 时默认写到系统临时目录 daiyin-pages
 const dest = process.argv[2] || path.join(os.tmpdir(), "daiyin-pages");
 
 const LEX_FILES = [
@@ -21,7 +21,6 @@ const CORE_FILES = [
 ];
 const LEVELS = ["A1", "A2", "B1", "B2"];
 
-// 1) 在沙箱里按原顺序执行词库文件，得到完整词表
 const sandbox = { window: {}, console: console };
 vm.createContext(sandbox);
 function syncGlobals() {
@@ -60,28 +59,44 @@ function packSource(level, words) {
     "})();\n";
 }
 
-// 2) 词库包写进工作区 js/（本地调试用）和部署目录
 fs.mkdirSync(path.join(dest, "js"), { recursive: true });
 fs.mkdirSync(path.join(dest, "css"), { recursive: true });
+const lexBodies = {};
 LEVELS.forEach(function (level) {
   const source = packSource(level, byLevel[level]);
   const name = "lexpack-" + level.toLowerCase() + ".js";
+  lexBodies[name] = source;
   fs.writeFileSync(path.join("js", name), source);
   fs.writeFileSync(path.join(dest, "js", name), source);
   console.log(name + " " + Math.round(source.length / 1024) + "KB");
 });
 
-// 3) 核心包
 const body = CORE_FILES.map(function (name) {
   return fs.readFileSync(path.join("js", name), "utf8");
 }).join("\n");
 fs.writeFileSync(path.join(dest, "js", "rianthai.js"), body);
 console.log("rianthai.js " + Math.round(body.length / 1024) + "KB");
 
-// 4) 其余静态文件
-fs.copyFileSync("index.html", path.join(dest, "index.html"));
-fs.copyFileSync(path.join("css", "app.css"), path.join(dest, "css", "app.css"));
+const cssBody = fs.readFileSync(path.join("css", "app.css"), "utf8");
+fs.writeFileSync(path.join(dest, "css", "app.css"), cssBody);
 ["fsi.js", "phonics.js"].forEach(function (name) {
   fs.copyFileSync(path.join("js", name), path.join(dest, "js", name));
 });
-console.log("copied index.html, app.css, fsi.js, phonics.js");
+
+const hash = crypto.createHash("sha1");
+hash.update(body);
+Object.keys(lexBodies).sort().forEach(function (name) { hash.update(lexBodies[name]); });
+hash.update(cssBody);
+hash.update(fs.readFileSync(path.join("js", "fsi.js")));
+hash.update(fs.readFileSync(path.join("js", "phonics.js")));
+const version = hash.digest("hex").slice(0, 10);
+console.log("cache version " + version);
+
+let html = fs.readFileSync("index.html", "utf8");
+html = html
+  .replace(/\?v=[^"'\s]+/g, "?v=" + version)
+  .replace(/window\.RT_VERSION\s*=\s*"[^"]*"/, 'window.RT_VERSION = "' + version + '"');
+fs.writeFileSync(path.join(dest, "index.html"), html);
+// 同步工作区入口版本，本地调试与部署一致
+fs.writeFileSync("index.html", html);
+console.log("copied index.html, app.css, fsi.js, phonics.js (v=" + version + ")");

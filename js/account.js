@@ -199,10 +199,17 @@
   }
 
   function statusLabel() {
-    if (!session) return "未登录";
-    if (status === "syncing") return "正在同步";
-    if (status === "error") return "未连上";
-    return "已同步";
+    if (!session) return "未登录 · 进度仅保存在本机";
+    if (status === "syncing") return "正在同步到云端";
+    if (status === "error") return "云端未连上 · 本机进度仍可用";
+    return "已同步到云端";
+  }
+
+  function syncNow() {
+    if (!session) return Promise.resolve();
+    const local = Store.exportState();
+    const start = (!local.synced || local.dirty) ? pushNow() : pullNow();
+    return start;
   }
 
   readSession();
@@ -211,12 +218,14 @@
     session: function () { return session; },
     status: function () { return status; },
     statusLabel: statusLabel,
+    apiHost: function () { return API_ORIGIN.replace(/^https?:\/\//, ""); },
     onLocalSave: schedulePush,
     login: function (draft) { return loginWith("login", draft); },
     signup: function (draft) { return loginWith("signup", draft); },
     logout: logout,
     wipe: wipe,
-    pull: pullNow
+    pull: pullNow,
+    syncNow: syncNow
   };
 
   if (session) {

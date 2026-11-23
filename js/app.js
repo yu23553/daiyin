@@ -1,3 +1,5 @@
+// LEGACY / 未接线：此文件是旧课程 UI，当前线上入口 index.html 不加载它。
+// 请改 js/study.js 与打包核心包（scripts/pack-rianthai.js 的 CORE_FILES）。保留仅供对照。
 (function () {
   const PEOPLE = {
     male: { state: "ครับ", stateRoman: "khráp", q: "ครับ", qRoman: "khráp", i: "ผม", iRoman: "phǒm" },

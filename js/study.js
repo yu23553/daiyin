@@ -23,7 +23,8 @@
       rounds: [],
       theme: "light",
       filter: "全部",
-      voice: "both"
+      voice: "both",
+      preferCloudTts: false
     };
     try {
       const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
@@ -198,10 +199,30 @@
     WORD = allWords();
   }
 
+  function lexLoadProgress(levels) {
+    const list = levels || levelOrder();
+    const ready = list.filter(lexReady).length;
+    const failed = list.some(function (lv) { return lexStatus[lv] === "error"; });
+    const loading = list.some(function (lv) { return lexStatus[lv] === "loading"; });
+    return {
+      ready: ready,
+      total: list.length,
+      width: list.length ? Math.round(100 * ready / list.length) : 0,
+      failed: failed,
+      loading: loading || (ready < list.length && !failed)
+    };
+  }
+
+  function setBootStatus(message) {
+    const node = document.getElementById("boot-zh");
+    if (node && message) node.textContent = message;
+  }
+
   function loadLex(level) {
     if (lexReady(level)) return Promise.resolve(true);
     if (lexPromises[level]) return lexPromises[level];
     lexStatus[level] = "loading";
+    setBootStatus("正在下载词库 " + level + "…");
     lexPromises[level] = loadScript("js/lexpack-" + level.toLowerCase() + ".js" + lexSuffix()).then(function (ok) {
       if (ok && window.LEXICON_PARTS && window.LEXICON_PARTS[level]) {
         lexStatus[level] = "ready";
@@ -540,9 +561,12 @@
       playingButton = button;
     }
     armHorn(button);
+    const tip = window.Speech.maybeTip && Speech.maybeTip();
+    if (tip) toast(tip);
     Speech.speak(thai, {
       gender: gender || "",
       slow: !!slow,
+      preferCloud: !!local.preferCloudTts,
       onProgress: function (ratio) {
         if (token !== playToken || !button) return;
         const bar = button.querySelector(".play-bar");
@@ -551,7 +575,7 @@
     }).then(function (ok) {
       if (token !== playToken) return;
       endPlay(button);
-      if (!ok) toast("没有播放出来。可检查网络，或安装泰语语音。");
+      if (!ok) toast("没有播放出来。请检查网络；也可在设置中查看朗读说明。");
     });
   }
 
@@ -1443,9 +1467,9 @@
       else actions = '<div class="row book-act"><button type="button" class="btn btn-primary" data-act="start" data-id="' + id + '">学习此书</button></div>';
     }
     const needLevel = bookNeedLevel(book);
-    const loadFailed = pending && needLevel && lexLevelsUpTo(needLevel).some(function (lv) { return lexStatus[lv] === "error"; });
+    const load = pending && needLevel ? lexLoadProgress(lexLevelsUpTo(needLevel)) : null;
     const stateLine = pending
-      ? '<p class="progress-label">' + (loadFailed ? "词库下载失败，点按重试" : "词库下载中…") + '</p><div class="mini-track"><span style="width:0%"></span></div>'
+      ? '<p class="progress-label">' + (load && load.failed ? "词库下载失败，点按重试" : "词库下载中 " + (load ? load.ready + "/" + load.total : "")) + '</p><div class="mini-track"><span style="width:' + (load ? load.width : 8) + '%"></span></div>'
       : '<p class="progress-label">已掌握 ' + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>';
     const title = book.scene
       ? '<span class="cover-level">' + esc(book.level || "") + '</span><span class="cover-name">' + esc(book.scene) + "</span>"
@@ -1873,39 +1897,57 @@
 
   function profilePage() {
     const session = Account.session();
+    const syncState = Account.status();
+    const syncTone = !session ? "off" : syncState === "error" ? "err" : syncState === "syncing" ? "busy" : "ok";
     const notes = Object.keys(local.notes).map(function (id) {
       const word = WORD[id];
       if (!word) return "";
       return '<article class="word-row"><span class="th" lang="th">' + esc(word.thai) + '</span><span class="grow">' + esc(local.notes[id]) + "</span></article>";
     }).filter(Boolean).join("");
     const levelText = local.quizLevel || "未测评";
-    const accountAction = session
-      ? '<button type="button" class="btn" data-act="logout">退出登录</button>'
-      : '<button type="button" class="btn btn-primary" data-act="go" data-view="auth">登录</button>';
+    const voice = window.Speech && Speech.status ? Speech.status() : { label: "朗读", tip: "", hasLocal: false };
     const noteBody = UI.notesOpen
-      ? (notes || '<p class="muted">还没有笔记。学习时可以写下。</p>')
+      ? '<div class="set-notes">' + (notes || '<p class="muted">还没有笔记。学习时可以写下。</p>') + "</div>"
       : "";
-    return '<div class="page"><div class="settings-stack">' +
-      '<p class="set-label">账号与外观</p>' +
-      '<section class="card"><p class="muted">账号</p><h2>' + esc(session ? session.username : "未登录") + '</h2>' +
-      '<div class="set-line"><span class="muted">词汇等级 ' + esc(levelText) + '</span><button type="button" class="btn" data-act="go" data-view="quiz">去测评</button></div>' +
-      '<div class="set-actions">' + accountAction + "</div></section>" +
-      '<section class="card"><h2>外观</h2><div class="set-row"><div><p>深色模式</p><p class="muted">' + themeLabel() + '</p></div>' +
+    const accountBtns = session
+      ? '<button type="button" class="btn" data-act="sync-now">立即同步</button><button type="button" class="btn" data-act="logout">退出登录</button>'
+      : '<button type="button" class="btn btn-primary" data-act="go" data-view="auth">登录同步进度</button>';
+    return '<div class="page settings-page"><h1 class="settings-title">设置</h1>' +
+      '<section class="set-panel set-account">' +
+      '<div class="set-account-top"><div><p class="set-kicker">账号</p><h2>' + esc(session ? session.username : "未登录") + '</h2></div>' +
+      '<span class="sync-pill is-' + syncTone + '">' + esc(Account.statusLabel()) + "</span></div>" +
+      '<p class="set-hint">云端进度托管在 ' + esc(Account.apiHost()) + '。站点在 Cloudflare Pages；未登录时进度只留在本机。</p>' +
+      '<div class="set-line"><span class="muted">词汇等级 · ' + esc(levelText) + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">去测评</button></div>' +
+      '<div class="set-actions set-actions-row">' + accountBtns + "</div></section>" +
+      '<p class="set-label">外观与朗读</p>' +
+      '<section class="set-panel">' +
+      '<div class="set-row"><div><p class="set-item-title">深色模式</p><p class="muted">' + themeLabel() + '</p></div>' +
       '<label class="switch"><input type="checkbox" data-act="theme-toggle"' + (resolvedTheme() === "dark" ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
-      '<div class="set-actions"><button type="button" class="btn" data-act="theme-system">跟随系统</button></div></section>' +
-      '<p class="set-label">学习配置</p>' +
-      '<section class="card"><button type="button" class="btn" data-act="go" data-view="plan">学习计划设置</button></section>' +
-      '<p class="set-label">学习资料</p>' +
-      '<section class="card"><h2>笔记</h2><p class="muted">在这里查看、管理你在学习中记录的笔记。</p>' +
-      '<div class="set-actions"><button type="button" class="btn" data-act="show-notes">查看笔记</button></div>' + noteBody + "</section>" +
-      '<section class="card"><h2>生词本与课文</h2><div class="set-actions"><button type="button" class="btn" data-act="go" data-view="notebook">打开生词本</button><button type="button" class="btn" data-act="go" data-view="texts">打开分级课文</button></div></section>' +
-      '<p class="set-label">数据管理</p>' +
-      '<section class="card"><h2>数据管理</h2><p class="muted">导出或恢复本机的学习进度、笔记和词本设置。</p>' +
-      '<div class="set-actions"><button type="button" class="btn" data-act="export-backup">导出备份</button><button type="button" class="btn" data-act="import-backup">导入恢复</button></div>' +
+      '<button type="button" class="text-btn set-inline-link" data-act="theme-system">改为跟随系统</button>' +
+      '<div class="set-divider"></div>' +
+      '<div class="set-row"><div><p class="set-item-title">朗读引擎</p><p class="muted">' + esc(voice.label) + '</p></div>' +
+      '<label class="switch" title="优先云端"><input type="checkbox" data-act="tts-cloud"' + (local.preferCloudTts ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
+      '<p class="set-hint">开关打开则优先云端朗读；关闭时优先本机泰语语音，失败再自动兜底。</p>' +
+      (voice.tip ? '<p class="set-hint">' + esc(voice.tip) + "</p>" : "") +
+      "</section>" +
+      '<p class="set-label">学习</p>' +
+      '<section class="set-panel set-list">' +
+      '<button type="button" class="set-link" data-act="go" data-view="plan"><span>学习计划</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="set-link" data-act="go" data-view="notebook"><span>生词本</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="set-link" data-act="go" data-view="texts"><span>分级课文</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="set-link" data-act="show-notes"><span>' + (UI.notesOpen ? "收起笔记" : "查看笔记") + '</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
+      noteBody +
+      "</section>" +
+      '<p class="set-label">数据</p>' +
+      '<section class="set-panel">' +
+      '<p class="set-hint">导出或恢复本机的学习进度、笔记和词本设置。</p>' +
+      '<div class="set-actions set-actions-row"><button type="button" class="btn" data-act="export-backup">导出备份</button><button type="button" class="btn" data-act="import-backup">导入恢复</button></div>' +
       '<input id="backup-file" type="file" accept="application/json,.json" data-act="import-file" hidden></section>' +
-      '<p class="set-label">关于本站</p>' +
-      '<section class="card"><h2>关于本站</h2><p class="muted">RianThai 用于练习泰语的听和说。词本按 A1 到 B2 分级，注音采用 Paiboon+。句尾礼貌词按说话人更换。</p></section>' +
-      "</div></div>";
+      '<p class="set-label">关于</p>' +
+      '<section class="set-panel">' +
+      '<p class="set-item-title">RianThai</p>' +
+      '<p class="set-hint">练习泰语听和说。词本 A1–B2，注音 Paiboon+；句尾礼貌词按说话人更换。版本 ' + esc(window.RT_VERSION || "dev") + "。</p>" +
+      "</section></div>";
   }
 
   function authPage() {
@@ -3488,12 +3530,27 @@
       draw();
       return;
     }
-    if (act === "theme-toggle" || act === "import-file") return;
+    if (act === "theme-toggle" || act === "import-file" || act === "tts-cloud") return;
     if (act === "theme-system") {
       local.theme = "system";
       applyTheme();
       saveLocal();
       draw();
+      return;
+    }
+    if (act === "sync-now") {
+      if (!Account.session()) {
+        toast("请先登录后再同步");
+        return;
+      }
+      toast("正在同步…");
+      Account.syncNow().then(function () {
+        toast(Account.status() === "error" ? "同步失败，请稍后重试" : "同步完成");
+        draw();
+      }).catch(function () {
+        toast("同步失败，请稍后重试");
+        draw();
+      });
       return;
     }
     if (act === "show-notes") {
@@ -3700,6 +3757,11 @@
       draw();
       return;
     }
+    if (input.dataset.act === "tts-cloud") {
+      local.preferCloudTts = !!input.checked;
+      saveLocal();
+      return;
+    }
     if (input.dataset.act === "import-file") {
       importBackup(input.files && input.files[0]);
       input.value = "";
@@ -3851,14 +3913,32 @@
     return lexLevelsUpTo(top);
   }
 
+  function prefetchRestLex() {
+    const rest = levelOrder().filter(function (lv) { return !lexStatus[lv]; });
+    if (!rest.length) return;
+    const run = function () {
+      rest.reduce(function (chain, level) {
+        return chain.then(function () { return loadLex(level); });
+      }, Promise.resolve()).then(function () { draw(); });
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 4000 });
+    else window.setTimeout(run, 1200);
+  }
+
   try {
     bindEdgeBack();
-    const bootWait = Promise.all(bootLevels().map(loadLex));
+    const needed = bootLevels();
+    setBootStatus("正在准备词库…");
+    const bootWait = Promise.all(needed.map(loadLex));
     draw();
     loadFonts();
-    bootWait.then(function () {
+    bootWait.then(function (results) {
+      const ok = results.every(Boolean);
+      if (!ok) setBootStatus("词库下载失败，可进入后点按重试");
+      else setBootStatus("准备完成");
       draw();
       hideBoot();
+      if (ok) prefetchRestLex();
     });
   } catch (err) {
     var bootStatus = document.getElementById("boot-zh");

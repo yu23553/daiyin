@@ -2,6 +2,7 @@
   let currentAudio = null;
   let currentUtterance = null;
   let voices = [];
+  let tipShown = false;
 
   function loadVoices() {
     voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
@@ -62,12 +63,9 @@
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   }
 
-  function speak(text, options) {
-    const opts = options || {};
-    const clean = (text || "").trim();
-    if (!clean) return Promise.resolve(false);
-    stop();
+  function speakLocal(clean, opts) {
     const voice = thaiVoice(opts.gender);
+    if (!voice || !window.speechSynthesis) return Promise.resolve(false);
     const rate = opts.slow ? 0.72 : 0.92;
     const pitch = opts.gender ? voicePitch(opts.gender) : (typeof opts.pitch === "number" ? opts.pitch : 1);
     let ratio = 0;
@@ -75,45 +73,54 @@
       ratio = Math.max(ratio, Math.min(0.98, next));
       if (opts.onProgress) opts.onProgress(ratio);
     }
-    if (opts.onProgress) opts.onProgress(0);
-
-    if (voice && window.speechSynthesis) {
-      return new Promise(function (resolve) {
-        const utter = new SpeechSynthesisUtterance(clean);
-        currentUtterance = utter;
-        utter.lang = "th-TH";
-        utter.voice = voice;
-        utter.rate = rate;
-        utter.pitch = pitch;
-        let settled = false;
-        const started = Date.now();
-        const estimate = Math.max(1200, clean.length * (opts.slow ? 320 : 210));
-        const mine = setInterval(function () {
-          report((Date.now() - started) / estimate);
-        }, 80);
-        ticker = mine;
-        const finish = function (ok) {
-          if (settled) return;
-          settled = true;
-          if (ticker === mine) clearTicker();
-          clearTimeout(timer);
-          if (ok && opts.onProgress) opts.onProgress(1);
-          resolve(ok);
-        };
-        const timer = setTimeout(function () { finish(true); }, 15000);
-        utter.onboundary = function (event) {
-          if (event.charIndex != null && clean.length) report(event.charIndex / clean.length);
-        };
-        utter.onend = function () { finish(true); };
-        utter.onerror = function (event) {
-          const reason = event && event.error;
-          finish(reason === "interrupted" || reason === "canceled");
-        };
+    return new Promise(function (resolve) {
+      const utter = new SpeechSynthesisUtterance(clean);
+      currentUtterance = utter;
+      utter.lang = "th-TH";
+      utter.voice = voice;
+      utter.rate = rate;
+      utter.pitch = pitch;
+      let settled = false;
+      const started = Date.now();
+      const estimate = Math.max(1200, clean.length * (opts.slow ? 320 : 210));
+      const mine = setInterval(function () {
+        report((Date.now() - started) / estimate);
+      }, 80);
+      ticker = mine;
+      const finish = function (ok) {
+        if (settled) return;
+        settled = true;
+        if (ticker === mine) clearTicker();
+        clearTimeout(timer);
+        if (ok && opts.onProgress) opts.onProgress(1);
+        resolve(ok);
+      };
+      const timer = setTimeout(function () { finish(true); }, 15000);
+      utter.onboundary = function (event) {
+        if (event.charIndex != null && clean.length) report(event.charIndex / clean.length);
+      };
+      utter.onend = function () { finish(true); };
+      utter.onerror = function (event) {
+        const reason = event && event.error;
+        // interrupted/canceled = user stop → treat as soft success; other errors → fail so cloud can try
+        if (reason === "interrupted" || reason === "canceled") finish(true);
+        else finish(false);
+      };
+      try {
         window.speechSynthesis.speak(utter);
-      });
-    }
+      } catch (err) {
+        finish(false);
+      }
+    });
+  }
 
+  function speakCloud(clean, opts) {
     const url = "https://translate.google.com/translate_tts?ie=UTF-8&tl=th&client=tw-ob&q=" + encodeURIComponent(clean);
+    let ratio = 0;
+    function report(next) {
+      ratio = Math.max(ratio, Math.min(0.98, next));
+      if (opts.onProgress) opts.onProgress(ratio);
+    }
     return new Promise(function (resolve) {
       const audio = new Audio(url);
       let settled = false;
@@ -175,6 +182,31 @@
     });
   }
 
+  function speak(text, options) {
+    const opts = options || {};
+    const clean = (text || "").trim();
+    if (!clean) return Promise.resolve(false);
+    stop();
+    if (opts.onProgress) opts.onProgress(0);
+    const preferCloud = !!opts.preferCloud;
+    const localFirst = !preferCloud && !!thaiVoice(opts.gender);
+    const chain = localFirst
+      ? speakLocal(clean, opts).then(function (ok) {
+          if (ok) return true;
+          stop();
+          if (opts.onProgress) opts.onProgress(0);
+          return speakCloud(clean, opts);
+        })
+      : speakCloud(clean, opts).then(function (ok) {
+          if (ok) return true;
+          if (!thaiVoice(opts.gender)) return false;
+          stop();
+          if (opts.onProgress) opts.onProgress(0);
+          return speakLocal(clean, opts);
+        });
+    return chain;
+  }
+
   function canRecognize() {
     return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
@@ -203,11 +235,35 @@
     });
   }
 
+  function status() {
+    const local = !!thaiVoice();
+    return {
+      hasLocal: local,
+      engine: local ? "local" : "cloud",
+      label: local ? "本机泰语语音" : "云端朗读（本机无泰语语音）",
+      tip: local
+        ? "优先使用本机语音；失败时自动改用云端。"
+        : "未检测到本机泰语语音，将使用网络朗读。Windows 可在「设置 → 时间和语言 → 语音」添加 Thai；iOS/macOS 可在辅助功能或听写与朗读中下载泰语。"
+    };
+  }
+
+  function maybeTip() {
+    if (tipShown || thaiVoice()) return "";
+    tipShown = true;
+    try {
+      if (localStorage.getItem("daiyin-tts-tip-v1") === "1") return "";
+      localStorage.setItem("daiyin-tts-tip-v1", "1");
+    } catch (err) { /* ignore */ }
+    return status().tip;
+  }
+
   window.Speech = {
     speak: speak,
     stop: stop,
     canRecognize: canRecognize,
     recognize: recognize,
-    hasThaiVoice: function () { return !!thaiVoice(); }
+    hasThaiVoice: function () { return !!thaiVoice(); },
+    status: status,
+    maybeTip: maybeTip
   };
 })();
