@@ -124,6 +124,13 @@
     state.awards = next.awards && typeof next.awards === "object" ? next.awards : {};
     state.lessons = next.lessons && typeof next.lessons === "object" ? next.lessons : {};
     state.offline = next.offline && typeof next.offline === "object" ? next.offline : {};
+    try {
+      state.phonics = JSON.parse(JSON.stringify(next.phonics && typeof next.phonics === "object" ? next.phonics : {}));
+    } catch (err) {
+      state.phonics = {};
+    }
+    if (!state.phonics.passed || typeof state.phonics.passed !== "object") state.phonics.passed = {};
+    if (!state.phonics.srs || typeof state.phonics.srs !== "object") state.phonics.srs = {};
     state.synced = !!next.synced;
     state.deviceId = typeof next.deviceId === "string" ? next.deviceId : "";
     try {
@@ -257,10 +264,15 @@
       card.interval = card.reps === 1 ? 1 : Math.max(1, Math.round(card.interval * card.ease));
       card.ease = Math.min(2.8, card.ease + 0.08);
       card.due = addDays(card.interval);
+      if (card.reps >= 3) {
+        card.retired = true;
+        card.due = "9999-12-31";
+      }
     } else {
       card.lapses += 1;
       card.reps = 0;
       card.interval = 0;
+      card.retired = false;
       card.ease = Math.max(1.5, card.ease - 0.2);
       card.due = dateKey();
     }
@@ -272,7 +284,7 @@
     const today = dateKey();
     return window.THAI.allWords().filter(function (word) {
       const card = state.srs[word.id];
-      return card && card.due <= today;
+      return card && !(card.retired || card.reps >= 3) && card.due <= today;
     });
   }
 
@@ -399,6 +411,70 @@
     if (extra && window.Account && Account.onLocalSave) Account.onLocalSave();
   }
 
+  function phonicsBag() {
+    if (!state.phonics || typeof state.phonics !== "object") state.phonics = {};
+    if (!state.phonics.passed || typeof state.phonics.passed !== "object") state.phonics.passed = {};
+    if (!state.phonics.srs || typeof state.phonics.srs !== "object") state.phonics.srs = {};
+    return state.phonics;
+  }
+
+  function phonicsPass(id) {
+    const bag = phonicsBag();
+    if (!bag.passed[id]) bag.passed[id] = dateKey();
+    if (bag.passed.l2a && bag.passed.l2b && bag.passed.l2c) bag.passed.l2 = dateKey();
+    const steps = ["l1", "l2", "l3", "l4", "l5"];
+    let fresh = false;
+    if (steps.every(function (key) { return bag.passed[key]; }) && !bag.doneAt) {
+      bag.doneAt = dateKey();
+      fresh = true;
+    }
+    save();
+    return fresh;
+  }
+
+  function phonicsMiss(id, payload) {
+    const bag = phonicsBag();
+    const card = bag.srs[id] || { ease: 2.3, reps: 0, lapses: 0, interval: 0, due: dateKey() };
+    card.reps = 0;
+    card.interval = 0;
+    card.lapses = (card.lapses || 0) + 1;
+    card.ease = Math.max(1.5, (card.ease || 2.3) - 0.15);
+    card.due = dateKey();
+    card.payload = payload || card.payload || {};
+    bag.srs[id] = card;
+    save();
+  }
+
+  function phonicsGrade(id, ok) {
+    const bag = phonicsBag();
+    const card = bag.srs[id];
+    if (!card) return;
+    if (ok) {
+      card.reps = (card.reps || 0) + 1;
+      card.interval = card.reps === 1 ? 1 : Math.max(1, Math.round((card.interval || 1) * (card.ease || 2.3)));
+      card.ease = Math.min(2.8, (card.ease || 2.3) + 0.08);
+      card.due = addDays(card.interval);
+    } else {
+      card.lapses = (card.lapses || 0) + 1;
+      card.reps = 0;
+      card.interval = 0;
+      card.ease = Math.max(1.5, (card.ease || 2.3) - 0.2);
+      card.due = dateKey();
+    }
+    save();
+  }
+
+  function phonicsDue() {
+    const bag = phonicsBag();
+    const today = dateKey();
+    return Object.keys(bag.srs).filter(function (id) {
+      const card = bag.srs[id];
+      return card && card.due <= today;
+    }).map(function (id) {
+      return { id: id, card: bag.srs[id] };
+    });
+  }
+
   function cycleDays() {
     const index = cycleIndex();
     const start = state.profile ? addDays(Math.floor((dayNumber() - 1) / 14) * 14, state.profile.startedAt) : dateKey();
@@ -449,6 +525,12 @@
     snapshotPending: snapshotPending,
     consumePending: consumePending,
     settle: settle,
-    applyState: applyState
+    applyState: applyState,
+    phonics: phonicsBag,
+    phonicsPass: phonicsPass,
+    phonicsMiss: phonicsMiss,
+    phonicsGrade: phonicsGrade,
+    phonicsDue: phonicsDue,
+    phonicsSave: function () { save(); }
   };
 })();

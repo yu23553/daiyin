@@ -1,0 +1,87 @@
+﻿// 打包 RianThai：核心包 + 按等级拆分的词库包。
+// 用法：node pack-rianthai.js <dest>   （cwd 须为项目根目录）
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const vm = require("vm");
+
+// 用法：node scripts/pack-rianthai.js [dest]
+// 不传 dest 时默认写到系统临时目录 daiyin-pages
+const dest = process.argv[2] || path.join(os.tmpdir(), "daiyin-pages");
+
+const LEX_FILES = [
+  "lexicon.js", "lexicon-add.js", "lexicon-a1.js", "lexicon-a2.js", "lexicon-a2b.js",
+  "lexicon-b1.js", "lexicon-b2.js", "lexicon-fill.js", "lexicon-bmore.js",
+  "lexicon-g1.js", "lexicon-g2.js", "lexicon-g3.js",
+  "lexicon-std.js", "lexicon-std2.js", "lexicon-std3.js", "lexicon-std4.js"
+];
+const CORE_FILES = [
+  "content.js", "speech.js", "store.js", "account.js",
+  "course.js", "course-more.js", "course-cover.js", "study.js"
+];
+const LEVELS = ["A1", "A2", "B1", "B2"];
+
+// 1) 在沙箱里按原顺序执行词库文件，得到完整词表
+const sandbox = { window: {}, console: console };
+vm.createContext(sandbox);
+function syncGlobals() {
+  ["LEXICON", "LEXICON_PUT", "COURSE", "THAI"].forEach(function (key) {
+    if (sandbox.window[key] && sandbox[key] !== sandbox.window[key]) sandbox[key] = sandbox.window[key];
+    if (sandbox[key] && !sandbox.window[key]) sandbox.window[key] = sandbox[key];
+  });
+}
+LEX_FILES.forEach(function (name) {
+  vm.runInContext(fs.readFileSync(path.join("js", name), "utf8"), sandbox, { filename: name });
+  syncGlobals();
+});
+
+const lexicon = sandbox.window.LEXICON;
+if (!lexicon || !Array.isArray(lexicon.words)) {
+  console.error("lexicon load failed");
+  process.exit(1);
+}
+const byLevel = {};
+LEVELS.forEach(function (level) { byLevel[level] = []; });
+lexicon.words.forEach(function (word) {
+  if (byLevel[word.level]) byLevel[word.level].push(word);
+});
+const total = LEVELS.reduce(function (sum, level) { return sum + byLevel[level].length; }, 0);
+console.log("words total " + lexicon.words.length + ", packed " + total + " " +
+  LEVELS.map(function (level) { return level + "=" + byLevel[level].length; }).join(" "));
+
+function packSource(level, words) {
+  return "(function () {\n" +
+    "  window.LEXICON = window.LEXICON || { system: " + JSON.stringify(lexicon.system || "Paiboon+") + ", words: [] };\n" +
+    "  window.LEXICON.words = window.LEXICON.words || [];\n" +
+    "  window.LEXICON_PARTS = window.LEXICON_PARTS || {};\n" +
+    "  if (window.LEXICON_PARTS." + level + ") return;\n" +
+    "  window.LEXICON_PARTS." + level + " = true;\n" +
+    "  window.LEXICON.words = window.LEXICON.words.concat(" + JSON.stringify(words) + ");\n" +
+    "})();\n";
+}
+
+// 2) 词库包写进工作区 js/（本地调试用）和部署目录
+fs.mkdirSync(path.join(dest, "js"), { recursive: true });
+fs.mkdirSync(path.join(dest, "css"), { recursive: true });
+LEVELS.forEach(function (level) {
+  const source = packSource(level, byLevel[level]);
+  const name = "lexpack-" + level.toLowerCase() + ".js";
+  fs.writeFileSync(path.join("js", name), source);
+  fs.writeFileSync(path.join(dest, "js", name), source);
+  console.log(name + " " + Math.round(source.length / 1024) + "KB");
+});
+
+// 3) 核心包
+const body = CORE_FILES.map(function (name) {
+  return fs.readFileSync(path.join("js", name), "utf8");
+}).join("\n");
+fs.writeFileSync(path.join(dest, "js", "rianthai.js"), body);
+console.log("rianthai.js " + Math.round(body.length / 1024) + "KB");
+
+// 4) 其余静态文件
+fs.copyFileSync("index.html", path.join(dest, "index.html"));
+fs.copyFileSync(path.join("css", "app.css"), path.join(dest, "css", "app.css"));
+["fsi.js", "phonics.js"].forEach(function (name) {
+  fs.copyFileSync(path.join("js", name), path.join(dest, "js", name));
+});
+console.log("copied index.html, app.css, fsi.js, phonics.js");

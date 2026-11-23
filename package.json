@@ -1,6 +1,13 @@
 {
   "name": "daiyin",
   "private": true,
+  "scripts": {
+    "start": "node js/serve.js",
+    "pack": "node scripts/pack-rianthai.js",
+    "deploy:rianthai": "npx --yes wrangler@4 pages deploy \"%TEMP%\\daiyin-pages\" --project-name rianthai --commit-dirty=true",
+    "deploy:daiyin": "npx --yes wrangler@4 pages deploy \"%TEMP%\\daiyin-pages\" --project-name daiyin --commit-dirty=true",
+    "deploy": "npm run pack && npm run deploy:rianthai && npm run deploy:daiyin"
+  },
   "dependencies": {
     "@netlify/blobs": "^11.1.9"
   }

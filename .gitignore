@@ -1,3 +1,4 @@
 .vercel
 .netlify
+.wrangler
 node_modules

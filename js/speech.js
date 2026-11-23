@@ -12,13 +12,48 @@
     window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
   }
 
-  function thaiVoice() {
-    return voices.find(function (voice) {
+  function refreshVoices() {
+    if (window.speechSynthesis) voices = window.speechSynthesis.getVoices() || [];
+  }
+
+  function thaiList() {
+    refreshVoices();
+    return voices.filter(function (voice) {
       return /th(-|_)?TH/i.test(voice.lang) || /thai/i.test(voice.name);
     });
   }
 
+  function namedVoice(list, pattern) {
+    return list.find(function (voice) { return pattern.test(voice.name + " " + (voice.voiceURI || "")); });
+  }
+
+  function thaiVoice(gender) {
+    const list = thaiList();
+    const female = namedVoice(list, /female|woman|girl|premwadee/i);
+    const male = namedVoice(list, /male|man|boy|niwat|pattara/i);
+    if (gender === "f") return female || (list.length > 1 && male ? list.find(function (voice) { return voice !== male; }) : null) || list[0] || null;
+    if (gender === "m") return male || (list.length > 1 && female ? list.find(function (voice) { return voice !== female; }) : null) || list[0] || null;
+    return list[0] || null;
+  }
+
+  function voicePitch(gender) {
+    const female = thaiVoice("f");
+    const male = thaiVoice("m");
+    const distinct = !!(female && male && female !== male);
+    if (gender === "f") return distinct ? 1.04 : 1.28;
+    if (gender === "m") return distinct ? 0.9 : 0.68;
+    return 1;
+  }
+
+  let ticker = null;
+
+  function clearTicker() {
+    if (ticker) clearInterval(ticker);
+    ticker = null;
+  }
+
   function stop() {
+    clearTicker();
     if (currentAudio) {
       currentAudio.pause();
       currentAudio = null;
@@ -32,8 +67,15 @@
     const clean = (text || "").trim();
     if (!clean) return Promise.resolve(false);
     stop();
-    const voice = thaiVoice();
+    const voice = thaiVoice(opts.gender);
     const rate = opts.slow ? 0.72 : 0.92;
+    const pitch = opts.gender ? voicePitch(opts.gender) : (typeof opts.pitch === "number" ? opts.pitch : 1);
+    let ratio = 0;
+    function report(next) {
+      ratio = Math.max(ratio, Math.min(0.98, next));
+      if (opts.onProgress) opts.onProgress(ratio);
+    }
+    if (opts.onProgress) opts.onProgress(0);
 
     if (voice && window.speechSynthesis) {
       return new Promise(function (resolve) {
@@ -42,16 +84,31 @@
         utter.lang = "th-TH";
         utter.voice = voice;
         utter.rate = rate;
+        utter.pitch = pitch;
         let settled = false;
+        const started = Date.now();
+        const estimate = Math.max(1200, clean.length * (opts.slow ? 320 : 210));
+        const mine = setInterval(function () {
+          report((Date.now() - started) / estimate);
+        }, 80);
+        ticker = mine;
         const finish = function (ok) {
           if (settled) return;
           settled = true;
+          if (ticker === mine) clearTicker();
           clearTimeout(timer);
+          if (ok && opts.onProgress) opts.onProgress(1);
           resolve(ok);
         };
-        const timer = setTimeout(function () { finish(true); }, 12000);
+        const timer = setTimeout(function () { finish(true); }, 15000);
+        utter.onboundary = function (event) {
+          if (event.charIndex != null && clean.length) report(event.charIndex / clean.length);
+        };
         utter.onend = function () { finish(true); };
-        utter.onerror = function () { finish(false); };
+        utter.onerror = function (event) {
+          const reason = event && event.error;
+          finish(reason === "interrupted" || reason === "canceled");
+        };
         window.speechSynthesis.speak(utter);
       });
     }
@@ -61,11 +118,19 @@
       const audio = new Audio(url);
       let settled = false;
       let started = false;
+      const startedAt = Date.now();
+      const estimate = Math.max(1400, clean.length * (opts.slow ? 340 : 230));
+      const mine = setInterval(function () {
+        report((Date.now() - startedAt) / estimate);
+      }, 80);
+      ticker = mine;
       const finish = function (ok) {
         if (settled) return;
         settled = true;
+        if (ticker === mine) clearTicker();
         clearTimeout(waitTimer);
         clearTimeout(capTimer);
+        if (ok && opts.onProgress) opts.onProgress(1);
         if (currentAudio === audio) currentAudio = null;
         resolve(ok);
       };
@@ -82,10 +147,30 @@
       currentAudio = audio;
       audio.preload = "auto";
       audio.onplaying = function () { started = true; };
-      audio.onended = function () { finish(true); };
+      audio.onloadedmetadata = function () {
+        if (audio.duration && isFinite(audio.duration) && ticker === mine) clearTicker();
+      };
+      audio.ontimeupdate = function () {
+        if (audio.duration && isFinite(audio.duration)) {
+          ratio = Math.min(0.98, audio.currentTime / audio.duration);
+          if (opts.onProgress) opts.onProgress(ratio);
+        }
+      };
+      audio.onended = function () {
+        if (opts.onProgress) opts.onProgress(1);
+        finish(true);
+      };
       audio.onerror = function () { finish(false); };
+      let speed = opts.slow ? 0.78 : 1;
+      if (opts.gender === "m") speed *= 0.82;
+      if (opts.gender === "f") speed *= 1.14;
+      if (opts.gender) {
+        if ("preservesPitch" in audio) audio.preservesPitch = false;
+        if ("mozPreservesPitch" in audio) audio.mozPreservesPitch = false;
+      }
+      audio.playbackRate = speed;
       audio.play().then(function () {
-        audio.playbackRate = opts.slow ? 0.78 : 1;
+        audio.playbackRate = speed;
       }, function () { finish(false); });
     });
   }

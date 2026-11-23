@@ -1,26 +1,142 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="zh-Hans" style="background:#f4f7fb;color-scheme:light">
 <head>
   <meta charset="utf-8">
+  <meta name="color-scheme" content="only light">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f7fb">
-  <title>ได้ยิน · 泰语背词</title>
-  <meta name="description" content="浅色背词。按 A1 到 B2 和食品、购物分词本，点击卡片翻转，认识与不认识分开复习。">
+  <title>RianThai</title>
+  <script>
+    (function () {
+      var dark = false;
+      try {
+        var saved = JSON.parse(localStorage.getItem("daiyin-books-v1") || "null");
+        var theme = saved && saved.theme;
+        dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+      } catch (e) {}
+      var root = document.documentElement;
+      root.setAttribute("data-theme", dark ? "dark" : "light");
+      root.style.background = dark ? "#171d27" : "#f4f7fb";
+      root.style.colorScheme = dark ? "dark" : "light";
+    })();
+  </script>
+  <style>
+    html, body { margin: 0; background: #f4f7fb; color-scheme: light; }
+    html[data-theme="dark"], html[data-theme="dark"] body { background: #171d27; color-scheme: dark; }
+    #boot {
+      position: fixed; inset: 0; z-index: 80;
+      display: grid; align-content: center; justify-items: center; gap: 16px;
+      background: #f4f7fb; color: #2c333a;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      transition: opacity 0.32s ease;
+    }
+    #boot.is-done { opacity: 0; pointer-events: none; }
+    html[data-theme="dark"] #boot { background: #171d27; color: #e7eef6; }
+    .boot-name { margin: 0; font-size: 30px; font-weight: 700; letter-spacing: 0.04em; }
+    .boot-line { display: grid; justify-items: center; gap: 6px; max-width: min(560px, calc(100% - 32px)); text-align: center; }
+    .boot-th, .boot-zh { text-wrap: balance; }
+    .boot-th { margin: 0; font-family: "Leelawadee UI", "Sarabun", sans-serif; font-size: 28.5px; font-weight: 600; line-height: 1.45; }
+    .boot-zh { margin: 0; color: #7b8694; font-size: 24px; line-height: 1.45; }
+    html[data-theme="dark"] .boot-zh { color: #9aa6b5; }
+    @media (prefers-reduced-motion: reduce) { #boot { transition: none; } }
+  </style>
+  <meta name="description" content="RianThai。按日常生活 A1 到 B2 分词本，注音用 Paiboon+，句尾礼貌词按说话人性别更换。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%235b93e6'/%3E%3Ctext x='18' y='72' font-size='64' fill='white' font-family='serif'%3Eไ%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/app.css?v=8">
+  <link rel="preload" href="js/rianthai.js?v=95" as="script">
+  <link id="app-css" rel="stylesheet" href="css/app.css?v=95" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="css/app.css?v=95"></noscript>
 </head>
 <body>
+  <div id="boot" role="status">
+    <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <!-- 2px 渐变环，1.2s 匀速旋转；中心淡色 ด -->
+      <defs>
+        <linearGradient id="rt-arc" x1="0" y1="0" x2="1" y2="1">
+          <stop class="rt-stop" offset="0" stop-opacity="0"/>
+          <stop class="rt-stop" offset=".55" stop-opacity=".4"/>
+          <stop class="rt-stop" offset="1" stop-opacity="1"/>
+        </linearGradient>
+      </defs>
+      <style>
+        .rt-stop { stop-color: #5b93e6; }
+        .rt-mark { fill: #5b93e6; opacity: .62; }
+        .rt-spin { transform-origin: 32px 32px; animation: rt-spin 1.2s linear infinite; }
+        @keyframes rt-spin { to { transform: rotate(360deg); } }
+        @media (prefers-color-scheme: dark) {
+          .rt-stop { stop-color: #8eb6f2; }
+          .rt-mark { fill: #8eb6f2; }
+        }
+        html[data-theme="light"] .rt-stop { stop-color: #5b93e6; }
+        html[data-theme="light"] .rt-mark { fill: #5b93e6; }
+        html[data-theme="dark"] .rt-stop { stop-color: #8eb6f2; }
+        html[data-theme="dark"] .rt-mark { fill: #8eb6f2; }
+        @media (prefers-reduced-motion: reduce) { .rt-spin { animation: none; } }
+      </style>
+      <g class="rt-spin">
+        <circle cx="32" cy="32" r="28" stroke="url(#rt-arc)" stroke-width="2" stroke-linecap="round" stroke-dasharray="118 58"/>
+      </g>
+      <text class="rt-mark" x="32" y="33" text-anchor="middle" dominant-baseline="central" font-family="Leelawadee UI, Sarabun, sans-serif" font-size="18">ด</text>
+    </svg>
+    <p class="boot-name">RianThai</p>
+    <div class="boot-line">
+      <p class="boot-th" id="boot-th"></p>
+      <p class="boot-zh" id="boot-zh"></p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var lines = [
+        ["ความพยายามอยู่ที่ไหน ความสำเร็จอยู่ที่นั่น", "努力在哪里，成功就在哪里"],
+        ["ช้าๆ ได้พร้าเล่มงาม", "慢慢来，终有所成"],
+        ["เวลาไม่เคยรอใคร", "时间不等人"],
+        ["ทุกอย่างมีทางออกเสมอ", "万事总有出路"],
+        ["อย่ากลัวที่จะเริ่มต้น", "不要害怕开始"],
+        ["ชีวิตคือการเดินทาง ไม่ใช่จุดหมาย", "人生是一场旅途，而非终点"],
+        ["กำลังใจที่ดี คือกำลังใจจากตัวเอง", "最好的鼓励，来自你自己"],
+        ["จงมีความสุขกับสิ่งที่คุณมี", "珍惜当下所拥有的，心怀喜乐"]
+      ];
+      var key = "daiyin-boot-quote";
+      var i = 0;
+      try { i = parseInt(localStorage.getItem(key), 10); } catch (e) { i = 0; }
+      if (isNaN(i) || i < 0 || i >= lines.length) i = 0;
+      var line = lines[i];
+      document.getElementById("boot-th").textContent = line[0];
+      document.getElementById("boot-zh").textContent = line[1];
+      document.getElementById("boot").setAttribute("aria-label", line[1]);
+      try { localStorage.setItem(key, String((i + 1) % lines.length)); } catch (e) {}
+    })();
+  </script>
   <div id="flash" aria-hidden="true"></div>
   <div id="app"></div>
   <div id="toast" role="status"></div>
-  <script src="js/content.js?v=8"></script>
-  <script src="js/fsi.js?v=8"></script>
-  <script src="js/speech.js?v=8"></script>
-  <script src="js/store.js?v=8"></script>
-  <script src="js/account.js?v=8"></script>
-  <script src="js/study.js?v=8"></script>
+  <script>window.RT_VERSION = "95";</script>
+  <script id="app-js" defer src="js/rianthai.js?v=95"></script>
+  <script>
+    (function () {
+      var js = document.getElementById("app-js");
+      var failed = false;
+      function note(message) {
+        var boot = document.getElementById("boot");
+        if (!boot) return;
+        var app = document.getElementById("app");
+        if (app && app.children.length) {
+          if (boot.parentNode) boot.parentNode.removeChild(boot);
+          return;
+        }
+        var status = document.getElementById("boot-zh");
+        if (status && message) status.textContent = message;
+      }
+      if (js) js.addEventListener("error", function () {
+        failed = true;
+        note("词库没有载入。请检查网络后刷新页面");
+      });
+      window.setTimeout(function () {
+        if (!failed) note("词库较大，仍在下载");
+      }, 20000);
+      window.setTimeout(function () {
+        if (!failed) note("词库还在载入。若一直停在这里，请刷新页面");
+      }, 45000);
+    })();
+  </script>
 </body>
 </html>
