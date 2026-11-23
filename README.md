@@ -1,6 +1,6 @@
 # ThaiStudyWeb（RianThai / Daiyin）
 
-泰语学习站点。本仓库由公开仓库 [yu23553/daiyin](https://github.com/yu23553/daiyin) 完整迁入，作为 Origin 上的工作代码库。
+泰语学习站点。日常开发与合并以 **Origin ThaiStudyWeb** 为源仓库（source of truth）；公开镜像为 [yu23553/daiyin](https://github.com/yu23553/daiyin)（GitHub `main`）。本仓库由该 GitHub 仓库完整迁入后继续演进。
 
 线上入口：
 
@@ -85,8 +85,21 @@ npm run deploy        # pack + deploy:rianthai + deploy:daiyin
 
 ## 远程与同源
 
-| 用途 | 地址 |
-| --- | --- |
-| 源仓库（迁移来源） | https://github.com/yu23553/daiyin |
-| 生产（Cloudflare） | https://rianthai.pages.dev 、 https://daiyin.pages.dev |
-| 账号 API（Netlify） | https://daiyin-study.netlify.app |
+| 用途 | 远程 / 地址 | 分支 |
+| --- | --- | --- |
+| 源仓库（日常开发 / PR） | Origin `ThaiStudyWeb`（本仓库） | `main` |
+| 公开镜像 | https://github.com/yu23553/daiyin | `main` |
+| 生产（Cloudflare） | https://rianthai.pages.dev 、 https://daiyin.pages.dev | — |
+| 账号 API（Netlify） | https://daiyin-study.netlify.app | — |
+
+### 双远程工作流
+
+本机可同时挂两个 remote：`origin` → Origin ThaiStudyWeb，`github` → `yu23553/daiyin`。日常：`git push origin main`（或经 PR 合并）。需要更新公开镜像时，把 Origin `main` 同步到 GitHub `main`。
+
+两边 **没有共同祖先**（Origin 是迁入后新建历史）。树内容几乎一致；Origin 相对 GitHub 多出：`README.md`、跨平台 `scripts/deploy-pages.js`，以及 `package.json` 中的名称/部署脚本改动。
+
+**推荐（非破坏性）**：在有 GitHub 写权限的机器上，把 Origin `main` merge 进 GitHub `main`（`--allow-unrelated-histories`），冲突以 Origin 为准，再 `git push github main`。这样保留 GitHub 既有提交，同时带上 Origin 的文档与跨平台部署脚本。
+
+**镜像（需另行批准）**：`git push --force github <origin-main>:main` 会改写 GitHub `main` 历史，仅在明确要求「GitHub 与 Origin 提交完全一致」时使用；本仓库流程默认 **不** force-push。
+
+Cloudflare 仍为 **手动** 本机发布：`npm run deploy`（需 `CLOUDFLARE_API_TOKEN` 或已 `wrangler login`），不依赖 GitHub/Origin CI。
