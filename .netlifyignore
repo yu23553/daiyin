@@ -1,0 +1,6 @@
+.git
+.vercel
+.netlify
+node_modules
+.gitignore
+.netlifyignore

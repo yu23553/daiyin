@@ -1,0 +1,15 @@
+{
+  "name": "thaistudyweb",
+  "private": true,
+  "description": "RianThai / Daiyin 泰语学习站（自 yu23553/daiyin 迁入 ThaiStudyWeb）",
+  "scripts": {
+    "start": "node js/serve.js",
+    "pack": "node scripts/pack-rianthai.js",
+    "deploy:rianthai": "node scripts/deploy-pages.js rianthai",
+    "deploy:daiyin": "node scripts/deploy-pages.js daiyin",
+    "deploy": "npm run pack && npm run deploy:rianthai && npm run deploy:daiyin"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.9"
+  }
+}
