@@ -1982,12 +1982,12 @@
 
   function authPage() {
     const login = UI.authMode === "login";
-    return '<div class="auth"><section class="auth-brand"><p class="muted">RianThai</p><h1>先把词认准，再拿去听和说</h1><p class="muted" style="margin-top:12px">词本按 A1、A2、B1、B2 和食品、购物分开。新用户可先做词汇测评，再进入建议词本。</p></section>' +
+    return '<div class="auth"><section class="auth-brand"><p class="auth-name">RianThai</p><h1>把泰语听清，再说出口</h1></section>' +
       '<form class="auth-form" data-auth-form><h2>' + (login ? "登录" : "注册") + '</h2><div class="field"><span>用户名</span><input id="acct-user" autocomplete="username"></div>' +
       '<div class="field"><span>密码</span><input id="acct-pass" type="password" autocomplete="' + (login ? "current-password" : "new-password") + '"></div>' +
       '<p class="form-error">' + esc(UI.authError) + "</p>" +
-      '<button class="btn btn-primary" type="submit"' + (UI.authBusy ? " disabled" : "") + ">" + (login ? "登录" : "注册并测评") + "</button>" +
-      '<button type="button" class="btn" data-act="auth-mode" style="margin-top:8px">' + (login ? "没有账号，去注册" : "已有账号，去登录") + "</button>" +
+      '<button class="btn btn-primary auth-btn" type="submit"' + (UI.authBusy ? " disabled" : "") + ">" + (login ? "登录" : "注册并测评") + "</button>" +
+      '<button type="button" class="btn auth-btn" data-act="auth-mode">' + (login ? "没有账号，去注册" : "已有账号，去登录") + "</button>" +
       '<button type="button" class="text-btn" data-act="go" data-view="home">先不登录，直接学习</button></form></div>';
   }
 

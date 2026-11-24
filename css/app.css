@@ -942,7 +942,32 @@ html[data-theme="dark"] .today {
   grid-template-columns: 1.1fr 0.9fr;
 }
 .auth-brand, .auth-form { display: flex; flex-direction: column; justify-content: center; padding: 48px; }
-.auth-brand { background: var(--blue-soft); }
+.auth-brand { background: var(--blue-soft); gap: 12px; }
+.auth-name {
+  margin: 0;
+  color: var(--blue-2);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.auth-brand h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  max-width: 12em;
+}
+.auth-form .auth-btn {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 260px;
+  margin-top: 10px;
+  padding: 9px 16px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+.auth-form .text-btn { margin-top: 14px; align-self: flex-start; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
 .field input, .field textarea, .search {
   border: 1px solid var(--line);
@@ -1210,7 +1235,10 @@ html[data-theme="dark"] .today {
   .mobile-books { display: flex; gap: 8px; overflow: auto; padding: 0 16px 8px; }
   .mobile-books button { flex: none; }
   .grid-2, .auth { grid-template-columns: 1fr; }
-  .auth-brand { min-height: auto; padding: 28px 20px; }
+  .auth-brand { min-height: auto; padding: 28px 20px; gap: 10px; }
+  .auth-name { font-size: 26px; }
+  .auth-brand h1 { font-size: 28px; max-width: none; }
+  .auth-form .auth-btn { max-width: none; }
   .auth-form, .page { padding: 16px 16px 160px; }
   .page.course-page { padding-bottom: 200px; }
   .page .btn { scroll-margin-bottom: 96px; }
