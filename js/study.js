@@ -2416,19 +2416,37 @@
         "</article>";
     }).join("");
     const phonics = bookProgress(phonicsBook());
-    const phonicsLabel = phonics.status === "done" ? "复习" : phonics.status === "active" ? "继续" : "学习";
     const phonicsOn = level === "phonics";
-    const phonicsCard = '<article class="course-level tone-phonics' + (phonicsOn ? " is-on" : "") + '"><button type="button" class="course-level-pick" data-act="course-level" data-id="phonics"><span>音标入门</span></button><p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div><button type="button" class="btn" data-act="phonics-open">' + phonicsLabel + "</button></article>";
+    // 与 A1–B2 等级卡一致：只展示进度，不在卡上再放大按钮；点选等级后用下方列表进入
+    const phonicsCard = '<article class="course-level tone-phonics' + (phonicsOn ? " is-on" : "") + '"><button type="button" class="course-level-pick" data-act="course-level" data-id="phonics"><span>音标入门</span></button><p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div></article>';
     let blocks = "";
     let empty = '<p class="muted">这一档没有符合条件的课时。</p>';
     if (level === "phonics") {
       const bag = Store.phonics();
-      const steps = [["l1", "第一课 · 5 个声调（5 小节）"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
-      blocks = steps.map(function (item) {
-        const done = bag.passed && bag.passed[item[0]];
-        return '<article class="course-item"><div class="grow"><h2>' + esc(item[1]) + '</h2><p class="muted">' + (done ? "已完成" : "未完成") + '</p></div><div class="course-item-actions"><button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + item[0] + '">学习</button></div></article>';
+      const p = bag.passed || {};
+      const steps = [
+        ["l1", "第一课 · 5 个声调", function () {
+          const n = ["l1a", "l1b", "l1c", "l1d", "l1e"].filter(function (key) { return !!p[key]; }).length;
+          return "已完成 " + n + " / 5 节";
+        }],
+        ["l2", "第二课 · 21 个声母", function () { return p.l2 ? "已完成" : "未完成"; }],
+        ["l3", "第三课 · 长短元音", function () { return p.l3 ? "已完成" : "未完成"; }],
+        ["l4", "第四课 · 音节拼读", function () { return p.l4 ? "已完成" : "未完成"; }],
+        ["l5", "第五课 · 综合自测", function () { return p.l5 ? "已完成" : "未完成"; }]
+      ];
+      blocks = steps.map(function (item, index) {
+        const id = item[0];
+        const opened = window.PHONICS ? PHONICS.openLesson(id, bag) : (id === "l1" || !!p[["", "l1", "l2", "l3", "l4"][index]]);
+        if (!opened) {
+          return '<div class="unit-row is-locked">' + courseLockIcon() +
+            '<span class="grow"><b>' + esc(item[1]) + '</b><small>完成上一课解锁</small></span>' +
+            '<span class="state state-lock">未解锁</span></div>';
+        }
+        return '<button type="button" class="unit-row" data-act="phonics-open" data-id="' + id + '">' +
+          '<span class="grow"><b>' + esc(item[1]) + '</b><small>' + esc(item[2]()) + "</small></span>" +
+          '<span class="chev" aria-hidden="true">&gt;</span></button>';
       }).join("");
-      empty = '<p class="muted">音标入门共 5 课，从五个声调开始。</p>';
+      empty = '<p class="muted">音标入门共 5 课，按顺序学习。</p>';
     } else {
       const levelPending = !lexLevelsUpTo(level).every(lexReady);
       blocks = levelPending ? "" : courseUnits(level).map(function (unit, index) { return unitRow(unit, index); }).join("");
@@ -3320,7 +3338,9 @@
         local.courseLevel = pick;
         UI.courseUnit = "";
         saveLocal();
-        if (pick !== "phonics" && !lexLevelsUpTo(pick).every(lexReady)) {
+        if (pick === "phonics" && !window.PHONICS) {
+          loadPhonics().then(function (ok) { if (ok) draw(); });
+        } else if (pick !== "phonics" && !lexLevelsUpTo(pick).every(lexReady)) {
           toast("正在下载词库，请稍候");
           kickLexUpTo(pick);
         }
