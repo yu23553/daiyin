@@ -1126,10 +1126,33 @@
 
   function navIcon(view) {
     const svg = '<svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true">';
-    if (view === "home") return svg + '<path d="M4.5 11 12 4.5 19.5 11V19.5a1 1 0 0 1-1 1h-4.2v-5.2H9.7v5.2H5.5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
-    if (view === "books") return svg + '<path d="M12 6.2c-1.7-1.1-3.8-1.6-6.4-1.2v13.2c2.6-.4 4.7.1 6.4 1.2 1.7-1.1 3.8-1.6 6.4-1.2V5c-2.6-.4-4.7.1-6.4 1.2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 6.2v13.2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
-    if (view === "course") return svg + '<path d="M5 6.5h10.2a2 2 0 0 1 2 2V13a2 2 0 0 1-2 2H9.2L6 17.6V15H5a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
-    return svg + '<circle cx="12" cy="8.2" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 19.2c.9-2.8 3-4.2 6-4.2s5.1 1.4 6 4.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    if (view === "home") {
+      return svg +
+        '<path d="M4.2 11.2 12 4.4l7.8 6.8v7.4a1.4 1.4 0 0 1-1.4 1.4h-4.1v-5.1H9.7v5.1H5.6a1.4 1.4 0 0 1-1.4-1.4z" fill="currentColor" opacity=".14"/>' +
+        '<path d="M4.2 11.2 12 4.4l7.8 6.8v7.4a1.4 1.4 0 0 1-1.4 1.4h-4.1v-5.1H9.7v5.1H5.6a1.4 1.4 0 0 1-1.4-1.4z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>' +
+        '<circle cx="12" cy="11.2" r="1.15" fill="currentColor"/></svg>';
+    }
+    if (view === "books") {
+      return svg +
+        '<path d="M5.2 5.4c2.2-.5 4.1.1 5.6 1.3v12.1c-1.6-1-3.5-1.5-5.6-1.1z" fill="currentColor" opacity=".16"/>' +
+        '<path d="M18.8 5.4c-2.2-.5-4.1.1-5.6 1.3v12.1c1.6-1 3.5-1.5 5.6-1.1z" fill="currentColor" opacity=".1"/>' +
+        '<path d="M12 6.6c-1.6-1.1-3.6-1.6-6-1.2v12.8c2.4-.4 4.4.1 6 1.2 1.6-1.1 3.6-1.6 6-1.2V5.4c-2.4-.4-4.4.1-6 1.2z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>' +
+        '<path d="M12 6.6v12.8" fill="none" stroke="currentColor" stroke-width="1.55"/></svg>';
+    }
+    if (view === "course") {
+      return svg +
+        '<path d="M5 7h9.8a2.2 2.2 0 0 1 2.2 2.2v4.2a2.2 2.2 0 0 1-2.2 2.2H9.4L6.2 18.3V15.4H5A2.2 2.2 0 0 1 2.8 13.2V9.2A2.2 2.2 0 0 1 5 7z" fill="currentColor" opacity=".14"/>' +
+        '<path d="M5 7h9.8a2.2 2.2 0 0 1 2.2 2.2v4.2a2.2 2.2 0 0 1-2.2 2.2H9.4L6.2 18.3V15.4H5A2.2 2.2 0 0 1 2.8 13.2V9.2A2.2 2.2 0 0 1 5 7z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>' +
+        '<path d="M6.6 10.2h7.2M6.6 12.6h4.8" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/></svg>';
+    }
+    return svg +
+      '<circle cx="12" cy="8.1" r="3.15" fill="currentColor" opacity=".16"/>' +
+      '<circle cx="12" cy="8.1" r="3.15" fill="none" stroke="currentColor" stroke-width="1.55"/>' +
+      '<path d="M5.6 19.2c1-3.1 3.3-4.7 6.4-4.7s5.4 1.6 6.4 4.7" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>';
+  }
+
+  function streakIcon() {
+    return '<span class="home-streak-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><defs><linearGradient id="rt-flame" x1="12" y1="8" x2="34" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#7ad0ec"/><stop offset="1" stop-color="#2b6f98"/></linearGradient></defs><path d="M24.2 6.5c1.8 4.2-.2 7.1-2.1 9.4-1.9 2.3-4.2 4.4-3.5 7.7.4 1.8 1.7 3.2 3.2 4.1-3.1-.2-5.7-2.7-6.2-5.9-.7-4.6 2.1-7.9 4.4-10.8C22.1 8.5 23.2 7.3 24.2 6.5z" fill="url(#rt-flame)" opacity=".95"/><path d="M30.8 16.2c.9 3.4-.7 5.8-2.4 7.8-1.5 1.8-3 3.4-2.2 6 .4 1.3 1.4 2.3 2.6 2.9-4.8 1.2-9.1-1.8-10.1-6.5-1.2-5.6 2.6-9.4 5.7-12.7 1.4-1.5 2.9-3 4.1-4.8 1.2 2.4 1.6 4.7 2.3 7.3z" fill="currentColor" opacity=".22"/><path d="M24 40.2c5.7 0 9.8-3.9 9.8-9.2 0-4.4-2.5-6.9-5.1-9.6-1.1 2.6-3.3 3.8-5 5.2-.2-3.4 1.1-5.7 2.6-8.1C22.6 14.8 14.2 20.4 14.2 31c0 5.3 4.1 9.2 9.8 9.2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>';
   }
 
   function sideLink(label, view, on, locked) {
@@ -1193,8 +1216,8 @@
     const system = [
       ["profile", "设置"]
     ];
-    return '<aside class="side"><button type="button" class="logo" data-act="go" data-view="home"><b>RianThai</b></button>' +
-      '<p class="side-label">【词本分级】</p>' +
+    return '<aside class="side"><button type="button" class="logo" data-act="go" data-view="home"><span class="logo-mark" aria-hidden="true">ไ</span><b>RianThai</b></button>' +
+      '<p class="side-label">词本分级</p>' +
       BOOKS.map(function (book) {
         const progress = bookProgress(book);
         const paused = savedSession(book.id);
@@ -1202,9 +1225,9 @@
         const detail = "已掌握 " + progress.mastered + " / " + progress.total + (paused ? " · 本轮 " + paused.index + " / " + paused.ids.length : "");
         return '<button type="button" class="book-btn' + (on ? " is-on" : "") + '" data-act="pick-book" data-id="' + esc(book.id) + '"><strong>' + esc(book.title) + "</strong><small>" + detail + "</small></button>";
       }).join("") +
-      '<p class="side-label">【学习功能】</p>' +
+      '<p class="side-label">学习</p>' +
       learn.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0], false); }).join("") +
-      '<p class="side-label">【系统】</p>' +
+      '<p class="side-label">系统</p>' +
       system.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0] || UI.view === "plan", false); }).join("") +
       "</aside>";
   }
@@ -1277,7 +1300,14 @@
       '<div class="today-stats"><div><b>' + newCount + '</b><span>新词</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + due + '</b><span>复习</span></div></div>' +
       '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始今天" : actionLabel(progress.status, current.id)) + "</button></div>";
     const slide = UI.homeSlide ? 1 : 0;
-    return '<div class="page home-page"><div class="today-streak"><p class="today-streak-label">已打卡天数</p><p class="today-streak-num">' + Store.get().streak.count + '</p></div><section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
+    const streak = Store.get().streak.count;
+    return '<div class="page home-page">' +
+      '<section class="home-hero" aria-label="RianThai">' +
+      '<div class="home-mark" aria-hidden="true">ไ</div>' +
+      '<div><p class="home-brand">RianThai</p><p class="home-tag">把泰语听清，再说出口</p></div></section>' +
+      '<div class="home-streak-row">' + streakIcon() +
+      '<div><p class="today-streak-label">已打卡</p><p class="today-streak-num">' + streak + "<span>天</span></p></div></div>" +
+      '<section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
       '<div class="today-switch" role="tablist"><button type="button" class="today-tab' + (slide === 0 ? " is-on" : "") + '" data-act="home-slide" data-id="0">单词</button><button type="button" class="today-tab' + (slide === 1 ? " is-on" : "") + '" data-act="home-slide" data-id="1">课程</button></div>' +
       '<div class="today-track" data-home-track><div class="today-slide" data-act="book-open" data-id="' + esc(current.id) + '">' + word + '</div><div class="today-slide">' + homeCourseBlock() + "</div></div></section></div>";
   }
