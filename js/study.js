@@ -3085,8 +3085,10 @@
     }
     if (!quiz.passed) return;
     const fresh = Store.phonicsPass(quiz.kind);
-    Store.award("phonics:practice", 5);
+    const xp = Store.award("phonics:practice", 5);
     if (fresh) toast("音标入门已完成，今日打卡已记下。");
+    else if (xp) toast("本组已完成，今日打卡已记下。");
+    else if (/^l1[a-e]?$/.test(String(quiz.kind || ""))) toast("本组已完成。");
   }
 
   function exportBackup() {

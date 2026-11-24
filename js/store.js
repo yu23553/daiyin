@@ -447,6 +447,8 @@
   function phonicsPass(id) {
     const bag = phonicsBag();
     if (!bag.passed[id]) bag.passed[id] = dateKey();
+    // 第一课任一组（l1a–l1e）通过，即记 l1 完成
+    if (/^l1[a-e]$/.test(id) && !bag.passed.l1) bag.passed.l1 = dateKey();
     if (bag.passed.l2a && bag.passed.l2b && bag.passed.l2c) bag.passed.l2 = dateKey();
     const steps = ["l1", "l2", "l3", "l4", "l5"];
     let fresh = false;
