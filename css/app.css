@@ -783,13 +783,12 @@ html[data-theme="dark"] .switch-ui { background: #3a4658; }
 .home-streak-row {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 14px;
   box-sizing: border-box;
   width: fit-content;
   max-width: 100%;
-  margin: 0 auto 14px;
-  padding: 14px 28px;
+  margin: 0 0 14px;
+  padding: 14px 20px;
   border-radius: 20px;
   background: linear-gradient(120deg, rgba(255,255,255,0.88), rgba(223,240,248,0.95));
   border: 1px solid var(--line);
@@ -1297,8 +1296,8 @@ html[data-theme="dark"] .today {
   .home-brand { font-size: 30px; }
   .home-streak-row {
     width: fit-content;
-    margin: 0 auto 12px;
-    padding: 14px 24px;
+    margin: 0 16px 12px;
+    padding: 14px 18px;
   }
   .today { margin: 0 0 8px; padding: 18px 0 16px; overflow: hidden; border-radius: 0; border-left: 0; border-right: 0; box-shadow: none; background: transparent; }
   .today-head, .today-switch { padding-left: 16px; padding-right: 16px; }
