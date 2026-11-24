@@ -783,12 +783,13 @@ html[data-theme="dark"] .switch-ui { background: #3a4658; }
 .home-streak-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 14px;
   box-sizing: border-box;
-  width: auto;
+  width: fit-content;
   max-width: 100%;
-  margin: 0 0 14px;
-  padding: 14px 16px;
+  margin: 0 auto 14px;
+  padding: 14px 28px;
   border-radius: 20px;
   background: linear-gradient(120deg, rgba(255,255,255,0.88), rgba(223,240,248,0.95));
   border: 1px solid var(--line);
@@ -1294,11 +1295,10 @@ html[data-theme="dark"] .today {
   .course-filters .chip { font-size: 16px; }
   .home-hero { margin: 4px 16px 14px; }
   .home-brand { font-size: 30px; }
-  /* 与下方今日任务内容同宽：page 16px + 本行 16px = slide 内边距 */
   .home-streak-row {
-    display: flex;
-    width: auto;
-    margin: 0 16px 12px;
+    width: fit-content;
+    margin: 0 auto 12px;
+    padding: 14px 24px;
   }
   .today { margin: 0 0 8px; padding: 18px 0 16px; overflow: hidden; border-radius: 0; border-left: 0; border-right: 0; box-shadow: none; background: transparent; }
   .today-head, .today-switch { padding-left: 16px; padding-right: 16px; }
