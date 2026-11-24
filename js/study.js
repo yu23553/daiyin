@@ -1318,13 +1318,13 @@
       '<div class="today-stats"><div><b>' + newCount + '</b><span>新词</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + due + '</b><span>复习</span></div></div>' +
       '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始今天" : actionLabel(progress.status, current.id)) + "</button></div>";
     const slide = UI.homeSlide ? 1 : 0;
-    const streak = Store.get().streak.count;
+    const checked = Store.checkInTotal();
     return '<div class="page home-page">' +
       '<section class="home-hero" aria-label="RianThai">' +
       '<div class="home-mark" aria-hidden="true">ไ</div>' +
       '<div><p class="home-brand">RianThai</p><p class="home-tag">把泰语听清，再说出口</p></div></section>' +
       '<button type="button" class="home-streak-row" data-act="go" data-view="stats" aria-label="查看统计">' + streakIcon() +
-      '<div><p class="today-streak-label">已打卡</p><p class="today-streak-num">' + streak + "<span>天</span></p></div></button>" +
+      '<div><p class="today-streak-label">累计打卡</p><p class="today-streak-num">' + checked + "<span>天</span></p></div></button>" +
       '<section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
       '<div class="today-switch" role="tablist"><button type="button" class="today-tab' + (slide === 0 ? " is-on" : "") + '" data-act="home-slide" data-id="0">单词</button><button type="button" class="today-tab' + (slide === 1 ? " is-on" : "") + '" data-act="home-slide" data-id="1">课程</button></div>' +
       '<div class="today-track" data-home-track><div class="today-slide" data-act="book-open" data-id="' + esc(current.id) + '">' + word + '</div><div class="today-slide">' + homeCourseBlock() + "</div></div></section></div>";
@@ -1979,6 +1979,7 @@
     if (Store.phonics().doneAt) badges.push("音标入门");
     return '<div class="page"><h1>统计</h1><div class="grid" style="margin-top:16px">' +
       '<section class="card"><p class="muted">连续打卡</p><h2>' + Store.get().streak.count + ' 天</h2></section>' +
+      '<section class="card"><p class="muted">累计打卡</p><h2>' + Store.checkInTotal() + ' 天</h2></section>' +
       '<section class="card"><p class="muted">学习次数</p><h2>' + Store.get().stats.sessions + '</h2></section>' +
       '<section class="card"><p class="muted">进入复习的词</p><h2>' + Store.knownCount() + "</h2></section></div>" +
       '<section class="card" style="margin-top:14px"><h2>近 7 天学习量</h2><div class="bars" style="margin-top:12px">' + bars + "</div></section>" +

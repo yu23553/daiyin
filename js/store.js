@@ -237,6 +237,22 @@
     state.streak.last = today;
   }
 
+  // 累计打卡：有过学习奖励 / 离线完成 / 已记入 streak 的不重复日期数。
+  function checkInTotal() {
+    const days = {};
+    Object.keys(state.awards || {}).forEach(function (key) {
+      const bag = state.awards[key];
+      if (bag && typeof bag === "object" && Object.keys(bag).length) days[key] = true;
+    });
+    Object.keys(state.offline || {}).forEach(function (key) {
+      const bag = state.offline[key];
+      if (!bag || typeof bag !== "object") return;
+      if (Object.keys(bag).some(function (id) { return !!bag[id]; })) days[key] = true;
+    });
+    if (state.streak && state.streak.last) days[state.streak.last] = true;
+    return Object.keys(days).length;
+  }
+
   function award(key, xp) {
     const today = dateKey();
     state.awards[today] = state.awards[today] || {};
@@ -500,6 +516,7 @@
     agenda: agenda,
     isDone: isDone,
     award: award,
+    checkInTotal: checkInTotal,
     grade: grade,
     dueWords: dueWords,
     card: function (id) { return state.srs[id] || null; },
