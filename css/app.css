@@ -784,6 +784,7 @@ html[data-theme="dark"] .switch-ui { background: #3a4658; }
   display: flex;
   align-items: center;
   gap: 14px;
+  width: 100%;
   margin: 0 0 14px;
   padding: 14px 16px;
   border-radius: 20px;
@@ -791,7 +792,14 @@ html[data-theme="dark"] .switch-ui { background: #3a4658; }
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   color: var(--ink);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
   animation: home-rise 0.65s 0.06s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.home-streak-row:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .home-streak-ico {
   width: 44px;

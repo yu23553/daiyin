@@ -1149,6 +1149,13 @@
         '<path d="M5 7h9.8a2.2 2.2 0 0 1 2.2 2.2v4.2a2.2 2.2 0 0 1-2.2 2.2H9.4L6.2 18.3V15.4H5A2.2 2.2 0 0 1 2.8 13.2V9.2A2.2 2.2 0 0 1 5 7z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>' +
         '<path d="M6.6 10.2h7.2M6.6 12.6h4.8" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/></svg>';
     }
+    if (view === "stats") {
+      return svg +
+        '<rect x="4.2" y="13.2" width="3.2" height="6.6" rx="1" fill="currentColor" opacity=".16"/>' +
+        '<rect x="10.4" y="9.2" width="3.2" height="10.6" rx="1" fill="currentColor" opacity=".16"/>' +
+        '<rect x="16.6" y="5.8" width="3.2" height="14" rx="1" fill="currentColor" opacity=".16"/>' +
+        '<path d="M5.8 19.8V13.2M12 19.8V9.2M18.2 19.8V5.8" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>';
+    }
     return svg +
       '<circle cx="12" cy="8.1" r="3.15" fill="currentColor" opacity=".16"/>' +
       '<circle cx="12" cy="8.1" r="3.15" fill="none" stroke="currentColor" stroke-width="1.55"/>' +
@@ -1223,6 +1230,7 @@
       ["course", "课程"]
     ];
     const system = [
+      ["stats", "统计"],
       ["profile", "设置"]
     ];
     return '<aside class="side"><button type="button" class="logo" data-act="go" data-view="home"><span class="logo-mark" aria-hidden="true">ไ</span><b>RianThai</b></button>' +
@@ -1237,7 +1245,7 @@
       '<p class="side-label">学习</p>' +
       learn.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0], false); }).join("") +
       '<p class="side-label">系统</p>' +
-      system.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0] || UI.view === "plan", false); }).join("") +
+      system.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0] || (item[0] === "profile" && UI.view === "plan"), false); }).join("") +
       "</aside>";
   }
 
@@ -1251,8 +1259,9 @@
 
   function bottomNav() {
     const items = [["home", "首页"], ["books", "词库"], ["course", "课程"], ["profile", "我的"]];
+    const underMe = { plan: 1, stats: 1, notebook: 1, texts: 1, quiz: 1 };
     return '<nav class="bottom-nav">' + items.map(function (item) {
-      const on = UI.view === item[0] || (item[0] === "profile" && UI.view === "plan");
+      const on = UI.view === item[0] || (item[0] === "profile" && underMe[UI.view]);
       return '<button type="button" data-act="go" data-view="' + item[0] + '"' + (on ? ' class="is-on"' : "") + ">" + navIcon(item[0]) + "<span>" + item[1] + "</span></button>";
     }).join("") + "</nav>";
   }
@@ -1314,8 +1323,8 @@
       '<section class="home-hero" aria-label="RianThai">' +
       '<div class="home-mark" aria-hidden="true">ไ</div>' +
       '<div><p class="home-brand">RianThai</p><p class="home-tag">把泰语听清，再说出口</p></div></section>' +
-      '<div class="home-streak-row">' + streakIcon() +
-      '<div><p class="today-streak-label">已打卡</p><p class="today-streak-num">' + streak + "<span>天</span></p></div></div>" +
+      '<button type="button" class="home-streak-row" data-act="go" data-view="stats" aria-label="查看统计">' + streakIcon() +
+      '<div><p class="today-streak-label">已打卡</p><p class="today-streak-num">' + streak + "<span>天</span></p></div></button>" +
       '<section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
       '<div class="today-switch" role="tablist"><button type="button" class="today-tab' + (slide === 0 ? " is-on" : "") + '" data-act="home-slide" data-id="0">单词</button><button type="button" class="today-tab' + (slide === 1 ? " is-on" : "") + '" data-act="home-slide" data-id="1">课程</button></div>' +
       '<div class="today-track" data-home-track><div class="today-slide" data-act="book-open" data-id="' + esc(current.id) + '">' + word + '</div><div class="today-slide">' + homeCourseBlock() + "</div></div></section></div>";
@@ -2016,6 +2025,7 @@
       "</section>" +
       '<p class="set-label">学习</p>' +
       '<section class="set-panel set-list">' +
+      '<button type="button" class="set-link" data-act="go" data-view="stats"><span>学习统计</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="plan"><span>学习计划</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="notebook"><span>生词本</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="texts"><span>分级课文</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
