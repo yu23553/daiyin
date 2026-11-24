@@ -1396,6 +1396,9 @@ html[data-theme="dark"] .today {
   .page .muted, .card .muted, .hint { font-size: 14px; line-height: 1.65; }
   .progress-block { padding: 0 16px; }
   .thai-xl { font-size: 60px; }
+  .tone-study-card { min-height: 300px; padding: 24px 18px 22px; }
+  .tone-study-thai { font-size: 68px; }
+  .tone-study-roman { font-size: 30px; }
   .face-front .roman { font-size: 20px; }
   .zh-lg { font-size: 22px; }
   .say-main .th { font-size: 18px; }
