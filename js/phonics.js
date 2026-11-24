@@ -488,6 +488,13 @@
     return row;
   }
 
+  function retreatStudy(bag, kind) {
+    const row = sectionState(bag, kind);
+    row.studyDone = false;
+    if (row.studyIndex > 0) row.studyIndex -= 1;
+    return row;
+  }
+
   function resetStudy(bag, kind) {
     const row = sectionState(bag, kind);
     row.studyIndex = 0;
@@ -540,7 +547,6 @@
     const backRow = '<div class="row" style="margin-top:16px;flex-wrap:wrap;gap:8px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button>' + nextBtn + "</div>";
     const head = '<div class="page"><p class="muted" style="margin-top:12px">第一课 · 第 ' + (index + 1) + " 节</p>" +
       '<h1>' + esc(meta.title) + "</h1>" +
-      '<p class="hint">' + esc(meta.tip) + "</p>" +
       '<p class="muted" style="margin-top:10px">五调速记</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + toneRefStrip() + "</div>";
 
     // 测验进行中或刚结束：一次一题，进度已持久化
@@ -568,20 +574,22 @@
     const word = words[at] || words[0];
     const last = at >= words.length - 1;
     const nextLabel = last ? "学完" : "下一个";
+    const prevDisabled = at <= 0 ? " disabled" : "";
     return head +
       '<section style="margin-top:16px"><h2>本节学习</h2>' +
       '<p class="day-progress">学习 ' + (at + 1) + " / " + words.length + "</p>" +
-      '<div class="stage" style="padding-top:8px">' +
-      '<article class="card ph-card" style="text-align:center">' +
+      '<div class="stage tone-study-stage">' +
+      '<article class="card ph-card tone-study-card">' +
       '<p class="pos">' + esc(TONE_NAME[word.tone] || "") + "</p>" +
-      '<p class="th" lang="th" style="font-size:56px;margin:8px 0">' + esc(word.thai) + "</p>" +
-      '<p class="roman" style="font-size:28px">' + esc(word.roman) + "</p>" +
-      "<p>" + esc(word.zh) + "</p>" +
-      '<div class="row" style="margin-top:14px;justify-content:center">' + playButtons(word.thai) + "</div>" +
-      '<p class="hint" style="margin-top:10px">可反复点听，听清后再下一个。</p>' +
+      '<p class="th tone-study-thai" lang="th">' + esc(word.thai) + "</p>" +
+      '<p class="roman tone-study-roman">' + esc(word.roman) + "</p>" +
+      '<p class="tone-study-zh">' + esc(word.zh) + "</p>" +
+      '<div class="row tone-study-plays">' + playButtons(word.thai) + "</div>" +
       "</article>" +
-      '<div class="actions"><button type="button" class="btn btn-primary" data-act="phonics-study-next" data-id="' + kind + '">' + nextLabel + "</button></div>" +
-      "</div></section>" + backRow + "</div>";
+      '<div class="actions tone-study-actions">' +
+      '<button type="button" class="btn" data-act="phonics-study-prev" data-id="' + kind + '"' + prevDisabled + ">上一个</button>" +
+      '<button type="button" class="btn btn-primary" data-act="phonics-study-next" data-id="' + kind + '">' + nextLabel + "</button>" +
+      "</div></div></section>" + backRow + "</div>";
   }
 
   function consPage(ui, bag) {
@@ -871,6 +879,7 @@
     TONE_NAME: TONE_NAME,
     sectionState: sectionState,
     advanceStudy: advanceStudy,
+    retreatStudy: retreatStudy,
     resetStudy: resetStudy,
     toneStudyWords: toneStudyWords
   };

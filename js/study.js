@@ -3651,6 +3651,15 @@
       draw();
       return;
     }
+    if (act === "phonics-study-prev") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      if (button.disabled) return;
+      PHONICS.retreatStudy(Store.phonics(), kind);
+      Store.phonicsSave();
+      draw();
+      return;
+    }
     if (act === "phonics-study-next") {
       const kind = button.dataset.id || UI.phonics.lesson;
       if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;

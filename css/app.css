@@ -459,6 +459,50 @@ a { color: var(--blue-2); }
 .course-unit.is-locked { color: var(--muted); }
 .course-unit .course-item { margin-top: 10px; }
 .ph-card .roman { font-size: 28px; }
+.tone-study-stage {
+  padding-top: 12px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.tone-study-card {
+  text-align: center;
+  width: 100%;
+  min-height: 320px;
+  padding: 28px 22px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.tone-study-thai {
+  font-size: 72px;
+  line-height: 1.15;
+  margin: 12px 0 6px;
+}
+.tone-study-roman {
+  font-size: 34px;
+  margin: 0;
+}
+.tone-study-zh {
+  font-size: 20px;
+  margin-top: 10px;
+}
+.tone-study-plays {
+  margin-top: 18px;
+  justify-content: center;
+  gap: 10px;
+}
+.tone-study-actions {
+  width: 100%;
+  max-width: 560px;
+}
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.45;
+  pointer-events: none;
+}
 .ph-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ph-progress { color: var(--muted); font-size: 15px; }
 .ph-lead { margin-top: 12px; }
