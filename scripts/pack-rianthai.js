@@ -99,4 +99,16 @@ html = html
 fs.writeFileSync(path.join(dest, "index.html"), html);
 // 同步工作区入口版本，本地调试与部署一致
 fs.writeFileSync("index.html", html);
-console.log("copied index.html, app.css, fsi.js, phonics.js (v=" + version + ")");
+
+const iconFiles = [
+  "apple-touch-icon.png",
+  "icon-192.png",
+  "icon-512.png",
+  "favicon-32.png"
+];
+iconFiles.forEach(function (name) {
+  const src = path.join(name);
+  if (!fs.existsSync(src)) return;
+  fs.copyFileSync(src, path.join(dest, name));
+});
+console.log("copied index.html, app.css, fsi.js, phonics.js, icons (v=" + version + ")");
