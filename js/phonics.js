@@ -19,7 +19,7 @@
     { id: "rise", thai: "หมา", roman: "mǎa", zh: "狗", memo: "ǎ 表示低升。狗是 หมา mǎa。" }
   ];
 
-  // 第一课 5 小节：每节学习词 + 约 30 题听音辨调（本节为主、掺少量他节）。任意一节 ≥80% 可打卡并解锁后续课。
+  // 第一课 5 小节按序解锁：每节学习词 + 约 30 题（本节为主、掺少量他节）。五节都 ≥80% 后记 l1 完成。
   const TONE_SETS = [
     [
       { tone: "mid", thai: "มา", roman: "maa", zh: "来" },
@@ -371,7 +371,13 @@
 
   function openLesson(id, bag) {
     const p = passedMap(bag);
-    if (id === "l1" || /^l1[a-e]$/.test(id) || id === "letters" || id === "review" || id === "point" || id === "report") return true;
+    if (id === "l1" || id === "letters" || id === "review" || id === "point" || id === "report") return true;
+    // 第一课五节按序：l1a 常开，其后须完成上一节
+    if (id === "l1a") return true;
+    if (id === "l1b") return !!p.l1a;
+    if (id === "l1c") return !!p.l1b;
+    if (id === "l1d") return !!p.l1c;
+    if (id === "l1e") return !!p.l1d;
     if (id === "l2" || id === "l2a") return !!p.l1;
     if (id === "l2b") return !!p.l2a;
     if (id === "l2c") return !!p.l2b;
@@ -423,7 +429,7 @@
     { title: "人物身体", tip: "爸爸、妈妈、头、耳… 升降调容易混，先跟读再测。" },
     { title: "事物数量", tip: "车、碗、多少、贵便宜… 以本节词为主，并掺少量新词。" },
     { title: "时间自然", tip: "天、月、风、雨… 先熟悉本节注音，再做听辨。" },
-    { title: "情感寒暄", tip: "喜欢、谢谢、你好… 学完本节例词再测，正确率 ≥80% 可打卡。" }
+    { title: "情感寒暄", tip: "喜欢、谢谢、你好… 学完本节例词再测；五节都通过后完成本课。" }
   ];
 
   function toneStudyWords(setIndex) {
@@ -472,16 +478,23 @@
         '<div class="row" style="margin-top:10px">' + playButtons(tone.thai) + "</div>" + ipaFold(TONE_IPA[tone.id]) + "</article>";
     }).join("");
     const passed = (bag && bag.passed) || {};
+    const lock = '<svg class="lock-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
     const sections = ["a", "b", "c", "d", "e"].map(function (letter, index) {
       const kind = toneSetKind(letter);
       const meta = TONE_SECTION_META[index] || { title: "第 " + (index + 1) + " 节", tip: "" };
       const done = !!passed[kind];
-      return '<article class="ph-lesson"><p class="ph-lesson-name">第 ' + (index + 1) + " 节 · " + esc(meta.title) +
-        (done ? " · 已测" : "") + '</p><p class="muted">' + esc(meta.tip) + '</p>' +
+      const opened = openLesson(kind, bag);
+      const title = "第 " + (index + 1) + " 节 · " + esc(meta.title) + (done ? " · 已测" : "");
+      if (!opened) {
+        return '<article class="ph-lesson is-locked"><p class="ph-lesson-name">' + lock + title +
+          '</p><p class="muted">请先完成第 ' + index + " 节。</p>" +
+          '<button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">未解锁</button></article>';
+      }
+      return '<article class="ph-lesson"><p class="ph-lesson-name">' + title + '</p><p class="muted">' + esc(meta.tip) + '</p>' +
         '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">进入本节</button></article>';
     }).join("");
     return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1>' +
-      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，每节先学再测；测完任意一节（≥80%）即打卡并完成本课。</p>' +
+      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，须按顺序学习：完成上一节（≥80%）后解锁下一节；五节都通过后完成本课。每节通过可记打卡。</p>' +
       '<div class="grid" style="margin-top:14px">' + cards + "</div>" +
       '<div class="ph-lessons" style="margin-top:16px">' + sections + "</div></div>";
   }
@@ -496,18 +509,24 @@
     const drillActive = ui.quiz && ui.quiz.kind === kind;
     const drill = drillActive ? drillHtml(ui.quiz) : "";
     const startLabel = done ? "再测一次（30 题）" : "开始本节测试（约 30 题）";
+    const nextLetter = index < 4 ? String.fromCharCode(97 + index + 1) : "";
+    const nextKind = nextLetter ? toneSetKind(nextLetter) : "";
+    const nextOpen = nextKind && openLesson(nextKind, bag);
+    const nextBtn = nextOpen
+      ? '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + nextKind + '">进入第 ' + (index + 2) + " 节</button>"
+      : "";
     return '<div class="page"><p class="muted" style="margin-top:12px">第一课 · 第 ' + (index + 1) + " 节</p>" +
       '<h1>' + esc(meta.title) + "</h1>" +
       '<p class="hint">' + esc(meta.tip) + "</p>" +
       '<p class="muted" style="margin-top:10px">五调速记</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + toneRefStrip() + "</div>" +
       '<section style="margin-top:16px"><h2>本节学习</h2><p class="hint">除基调例词外，再听这些与测验相关的词。点喇叭跟读，再去做测试。</p>' +
       '<div class="grid" style="margin-top:12px">' + toneStudyCards(study) + "</div></section>" +
-      '<section class="card" style="margin-top:16px"><h2>本节测试</h2><p class="hint">约 30 题：以本节学习词为主，并掺少量未学词。正确率 ≥80% 记打卡。</p>' +
+      '<section class="card" style="margin-top:16px"><h2>本节测试</h2><p class="hint">约 30 题：以本节学习词为主，并掺少量未学词。正确率 ≥80% 记打卡，并解锁下一节。</p>' +
       (done ? '<p class="muted">本节已测过。</p>' : "") +
       (drillActive ? "" : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + kind + '" style="margin-top:10px">' + startLabel + "</button>") +
       "</section>" +
       (drill ? '<div style="margin-top:16px">' + drill + "</div>" : "") +
-      '<div class="row" style="margin-top:16px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button></div></div>';
+      '<div class="row" style="margin-top:16px;flex-wrap:wrap;gap:8px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button>' + nextBtn + "</div></div>";
   }
 
   function consPage(ui, bag) {

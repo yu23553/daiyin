@@ -3563,7 +3563,8 @@
       return;
     }
     if (act === "phonics-locked") {
-      toast("请先完成上一课。");
+      const lockedId = button.dataset.id || "";
+      toast(/^l1[b-e]$/.test(lockedId) ? "请先完成上一节。" : "请先完成上一课。");
       return;
     }
     if (act === "phonics-open") {
@@ -3595,7 +3596,7 @@
       }
       const before = snapshot();
       if (id && !PHONICS.openLesson(id, Store.phonics())) {
-        toast(id === "l2b" || id === "l2c" ? "请先完成上一批声母。" : "请先完成上一课。");
+        toast(/^l1[b-e]$/.test(id) ? "请先完成上一节。" : (id === "l2b" || id === "l2c" ? "请先完成上一批声母。" : "请先完成上一课。"));
         return;
       }
       UI.phonics.lesson = id;
