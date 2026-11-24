@@ -917,6 +917,18 @@ html[data-theme="dark"] .today {
 .book-card.is-cover .mini-track span { background: var(--cover-ink); }
 .book-card.is-cover .btn-primary { background: var(--cover-ink); border-color: var(--cover-ink); color: var(--cover); }
 .book-card { cursor: pointer; }
+.series-card .series-meta {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.82;
+}
+.series-card .cover-name { margin-left: 0.15em; }
+.series-custom {
+  background: var(--card);
+  border: 1px dashed var(--line);
+}
+.series-custom .cover-name { font-size: 22px; }
+.books-hub .hint { margin: 0 0 14px; }
 .book-face { display: flex; flex-direction: column; justify-content: center; flex: 1; }
 .book-card .desc { margin-top: 6px; }
 .card button.block, .block { width: 100%; }

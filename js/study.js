@@ -472,6 +472,7 @@
     courseDone: false,
     homeSlide: 0,
     openBook: "",
+    booksSeries: "",
     bucket: "",
     courseUnit: "",
     lexQuery: "",
@@ -1012,7 +1013,8 @@
   }
 
   function atSectionRoot() {
-    if (UI.view === "home" || UI.view === "books" || UI.view === "profile") return true;
+    if (UI.view === "home" || UI.view === "profile") return true;
+    if (UI.view === "books" && !UI.booksSeries && !String(UI.lexQuery || "").trim()) return true;
     if (UI.view === "course" && !UI.lessonId && !UI.coursePane && !UI.courseUnit) return true;
     return false;
   }
@@ -1045,6 +1047,7 @@
     UI.coursePane = frame.pane || "";
     UI.courseFocus = frame.focus || "";
     UI.openBook = frame.open || "";
+    UI.booksSeries = frame.series || "";
     UI.bucket = frame.bucket || "";
     UI.courseUnit = frame.cu || "";
     navMotion = swiping ? "cut" : "back";
@@ -1101,6 +1104,7 @@
       pane: UI.coursePane || "",
       focus: UI.courseFocus || "",
       open: UI.openBook || "",
+      series: UI.booksSeries || "",
       bucket: UI.bucket || "",
       cu: UI.courseUnit || ""
     };
@@ -1108,7 +1112,7 @@
 
   function noteNav(before) {
     const now = snapshot();
-    if (now.view === before.view && now.bookId === before.bookId && now.lessonId === before.lessonId && now.ph === before.ph && now.unit === before.unit && now.pane === (before.pane || "") && now.focus === (before.focus || "") && (now.open || "") === (before.open || "") && (now.bucket || "") === (before.bucket || "") && (now.cu || "") === (before.cu || "")) return;
+    if (now.view === before.view && now.bookId === before.bookId && now.lessonId === before.lessonId && now.ph === before.ph && now.unit === before.unit && now.pane === (before.pane || "") && now.focus === (before.focus || "") && (now.open || "") === (before.open || "") && (now.series || "") === (before.series || "") && (now.bucket || "") === (before.bucket || "") && (now.cu || "") === (before.cu || "")) return;
     UI.nav.push(before);
     if (UI.nav.length > 40) UI.nav.shift();
   }
@@ -1161,7 +1165,12 @@
 
   function pageTitle() {
     if (UI.view === "home") return "RianThai";
-    if (UI.view === "books") return String(UI.lexQuery || "").trim() ? "查词" : "词库";
+    if (UI.view === "books") {
+      if (String(UI.lexQuery || "").trim()) return "查词";
+      if (UI.booksSeries === "custom") return "自建词本";
+      if (UI.booksSeries) return UI.booksSeries + " 系列";
+      return "词库";
+    }
     if (UI.view === "progress") return "学习进度";
     if (UI.view === "bucket") return bucketName(UI.bucket);
     if (UI.view === "book" || UI.view === "study") {
@@ -1510,15 +1519,49 @@
     return '<article class="card book-card' + (paint ? " is-cover" : "") + (locked ? " is-locked has-tip" : "") + '" data-act="book-open" data-id="' + esc(book.id) + '"' + (paint ? ' style="--cover:' + paint.bg + ";--cover-ink:" + paint.ink + '"' : "") + (locked ? ' data-tip="' + esc(lockTip(book)) + '"' : "") + ">" + top + face + actions + "</article>";
   }
 
+  function seriesBooks(level) {
+    const main = BOOKS.filter(function (book) { return book.id === level; })[0];
+    const topics = sceneBooks().filter(function (book) { return book.levelId === level; });
+    return (main ? [main] : []).concat(topics);
+  }
+
+  function seriesCard(level) {
+    const book = BOOKS.filter(function (item) { return item.id === level; })[0];
+    const pending = bookPending(book);
+    const progress = pending ? { total: 0, mastered: 0, locked: isLocked(book), status: "", width: 0 } : bookProgress(book);
+    const locked = progress.locked;
+    const topics = sceneBooks().filter(function (item) { return item.levelId === level; }).length;
+    const paint = coverPaint(book);
+    const load = pending ? lexLoadProgress(lexLevelsUpTo(level)) : null;
+    let stateLine = '<p class="progress-label">已掌握 ' + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>';
+    if (pending) {
+      if (load && load.failed) stateLine = '<p class="progress-label">词库下载失败，点按重试</p>';
+      else if (load && load.loading) stateLine = '<p class="progress-label">词库下载中 ' + load.ready + "/" + load.total + '</p><div class="mini-track"><span style="width:' + load.width + '%"></span></div>';
+      else stateLine = '<p class="progress-label">点进后查看词本</p>';
+    }
+    const countLabel = topics ? (topics + 1) + " 本 · 整本与话题词本" : "整本与话题词本";
+    const meta = '<p class="desc">' + esc(book.desc || "") + '</p><p class="series-meta">' + countLabel + "</p>";
+    return '<article class="card book-card series-card' + (paint ? " is-cover" : "") + (locked ? " is-locked has-tip" : "") + '" data-act="series-open" data-id="' + esc(level) + '"' + (paint ? ' style="--cover:' + paint.bg + ";--cover-ink:" + paint.ink + '"' : "") + (locked ? ' data-tip="' + esc(lockTip(book)) + '"' : "") + '>' +
+      '<div class="book-face"><h2><span class="cover-level">' + esc(level) + '</span><span class="cover-name">系列</span></h2>' + meta + stateLine + "</div></article>";
+  }
+
+  function customSeriesCard() {
+    const count = (local.custom || []).length;
+    return '<article class="card book-card series-card series-custom" data-act="series-open" data-id="custom">' +
+      '<div class="book-face"><h2><span class="cover-name">自建词本</span></h2>' +
+      '<p class="desc">自己整理的词本</p><p class="series-meta">' + count + " 本</p></div></article>";
+  }
+
+  function booksCreateCard() {
+    return '<article class="card book-create"><h2>新建词本</h2><p class="muted">从生词本勾选单词后，可放入自建词本。</p>' +
+      '<div class="field"><input id="new-book" placeholder="词本名称" value="' + esc(UI.draftName) + '"></div>' +
+      '<button type="button" class="btn btn-primary" data-act="create-book" style="margin-top:12px">创建</button></article>';
+  }
+
   function booksPage() {
-    const filters = ["全部", "等级", "话题", "自建"];
     const customBooks = (local.custom || []).map(function (book) {
       return { id: book.id, level: "自建", title: book.title, desc: "自建词本", wordIds: book.wordIds || [] };
     });
-    let list = [];
-    if (local.filter === "全部" || local.filter === "等级") list = list.concat(BOOKS);
-    if (local.filter === "全部" || local.filter === "话题") list = list.concat(sceneBooks());
-    if (local.filter === "全部" || local.filter === "自建") list = list.concat(customBooks);
     const q = String(UI.lexQuery || "").trim();
     const search = '<input class="search lex-search" data-act="lex-search" placeholder="搜索泰语、中文或注音" value="' + esc(UI.lexQuery || "") + '">';
     if (q) {
@@ -1532,16 +1575,27 @@
         '<p class="hint">' + (hits.length ? "找到 " + hits.length + " 个词" + (hits.length >= 40 ? "，已显示前 40 个" : "") + "。点喇叭可听读音。" : "没有找到这个词。可换泰语、中文或注音再查。") + (allLexReady() ? "" : "词库还在下载，结果可能不全。") + "</p>" +
         '<div class="list">' + rows + "</div></div>";
     }
+
+    if (!UI.booksSeries) {
+      return '<div class="page books-hub"><div class="row"><h1>词本</h1></div>' + search +
+        '<p class="hint">先选等级系列，再看整本与话题词本。</p>' +
+        '<div class="grid books-grid series-grid">' + levelOrder().map(seriesCard).join("") + customSeriesCard() + "</div></div>";
+    }
+
+    if (UI.booksSeries === "custom") {
+      return '<div class="page"><div class="row"><h1>自建词本</h1></div>' + search +
+        '<div class="grid books-grid">' + customBooks.map(bookCard).join("") + booksCreateCard() + "</div></div>";
+    }
+
+    const list = seriesBooks(UI.booksSeries);
     list.forEach(function (book) {
       const level = bookNeedLevel(book);
       if (level) kickLexUpTo(level);
     });
-    return '<div class="page"><div class="row"><h1>词本</h1></div>' + search + '<div class="chips">' + filters.map(function (name) {
-      return '<button type="button" class="chip' + (local.filter === name ? " is-on" : "") + '" data-act="filter" data-id="' + name + '">' + name + "</button>";
-    }).join("") + '</div><div class="grid books-grid">' + list.map(bookCard).join("") +
-      '<article class="card book-create"><h2>新建词本</h2><p class="muted">从生词本勾选单词后，可放入自建词本。</p>' +
-      '<div class="field"><input id="new-book" placeholder="词本名称" value="' + esc(UI.draftName) + '"></div>' +
-      '<button type="button" class="btn btn-primary" data-act="create-book" style="margin-top:12px">创建</button></article></div></div>';
+    const head = BOOKS.filter(function (book) { return book.id === UI.booksSeries; })[0];
+    return '<div class="page"><div class="row"><h1>' + esc(UI.booksSeries) + ' 系列</h1></div>' + search +
+      (head ? '<p class="hint">' + esc(head.desc || "") + "</p>" : "") +
+      '<div class="grid books-grid">' + list.map(bookCard).join("") + "</div></div>";
   }
 
   function wheelHtml(book) {
@@ -2867,7 +2921,7 @@
   let endSlide = null;
 
   function currentPageKey() {
-    return [UI.view, UI.bookId, UI.lessonId || "", UI.coursePane || "", UI.courseFocus || "", (UI.phonics && UI.phonics.lesson) || "", UI.unit || 0, UI.openBook || "", UI.bucket || "", UI.courseUnit || ""].join("|");
+    return [UI.view, UI.bookId, UI.lessonId || "", UI.coursePane || "", UI.courseFocus || "", (UI.phonics && UI.phonics.lesson) || "", UI.unit || 0, UI.openBook || "", UI.booksSeries || "", UI.bucket || "", UI.courseUnit || ""].join("|");
   }
 
   function draw() {
@@ -3103,10 +3157,22 @@
       if (sectionSwitch) {
         UI.nav = [];
         UI.openBook = "";
+        UI.booksSeries = "";
         UI.bucket = "";
         UI.courseUnit = "";
         if (button.closest(".bottom-nav")) navMotion = "cut";
       } else noteNav(before);
+      draw();
+      return;
+    }
+    if (act === "series-open") {
+      const id = button.dataset.id || "";
+      if (!id) return;
+      if (id !== "custom" && !BOOKS.some(function (book) { return book.id === id; })) return;
+      const before = snapshot();
+      UI.booksSeries = id;
+      if (id !== "custom") kickLexUpTo(id);
+      noteNav(before);
       draw();
       return;
     }
