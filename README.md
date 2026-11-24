@@ -32,19 +32,16 @@ Windows 也可双击 `start.bat`。
 
 ## 打包与发布
 
-发布前 bump 缓存版本：
-
-1. 在 `index.html` 中把资源上的 `?v=N` 与 `window.RT_VERSION` 改成新数字（例如 95 → 96）。
-2. 打包并双部署：
+打包并双部署：
 
 ```bash
-npm run pack          # 生成词库包 + 临时目录核心包
+npm run pack          # 生成词库包 + 临时目录核心包，并自动写入缓存版本 hash
 npm run deploy        # pack + deploy:rianthai + deploy:daiyin
 ```
 
-`npm run pack` 默认写出到系统临时目录下的 `daiyin-pages`（与 `os.tmpdir()` 一致），并刷新工作区里的 `js/lexpack-*.js`。也可指定目录：`node scripts/pack-rianthai.js /path/to/out`。
+`npm run pack` 会根据核心包 / 词库包 / 样式等内容计算短 hash，写入部署目录与工作区 `index.html` 的 `?v=` 与 `window.RT_VERSION`（无需再手改版本号）。默认产物目录为系统临时目录下的 `daiyin-pages`（与 `os.tmpdir()` 一致），并刷新工作区 `js/lexpack-*.js`。也可指定目录：`node scripts/pack-rianthai.js /path/to/out`。
 
-验证：打开 `https://rianthai.pages.dev/?t=N`（N 为新版本号）。
+验证：打开 `https://rianthai.pages.dev/?t=<version>`（version 为 pack 打印的 cache version）。
 
 ### Cloudflare 凭证
 
@@ -78,7 +75,7 @@ npm run deploy        # pack + deploy:rianthai + deploy:daiyin
 | `js/lexpack-*.js` | 按等级打包的词库（pack 生成） |
 | `js/phonics.js` / `js/fsi.js` | 音标 / FSI，按需加载 |
 | `js/serve.js` | 本地 8765 调试服务 |
-| `js/app.js` | 可选旧入口，非线上默认 |
+| `js/app.js` | **未接线的旧 UI**（legacy），线上不加载；勿当现行入口改 |
 | `scripts/pack-rianthai.js` | 打包 |
 | `scripts/deploy-pages.js` | 跨平台 Cloudflare Pages 部署 |
 | `netlify/` | 账号同步 Functions |
