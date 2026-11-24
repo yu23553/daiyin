@@ -1217,7 +1217,22 @@
     }
     if (UI.view === "phonics") {
       const id = (UI.phonics && UI.phonics.lesson) || "";
-      const names = { l1: "5 个声调", l2: "21 个声母", l3: "长短元音", l4: "音节拼读", l5: "综合拼读自测", letters: "泰文字母", review: "音标复习", report: "拼读自测报告", point: "音节" };
+      const names = {
+        l1: "5 个声调",
+        l1a: "声调 · 第 1 节",
+        l1b: "声调 · 第 2 节",
+        l1c: "声调 · 第 3 节",
+        l1d: "声调 · 第 4 节",
+        l1e: "声调 · 第 5 节",
+        l2: "21 个声母",
+        l3: "长短元音",
+        l4: "音节拼读",
+        l5: "综合拼读自测",
+        letters: "泰文字母",
+        review: "音标复习",
+        report: "拼读自测报告",
+        point: "音节"
+      };
       return names[id] || "音标入门";
     }
     return "RianThai";
@@ -1660,7 +1675,7 @@
     if (book.id === "phonics") {
       listTitle = "课时";
       const bag = Store.phonics();
-      const lessons = [["l1", "第一课 · 5 个声调"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
+      const lessons = [["l1", "第一课 · 5 个声调（5 小节）"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
       table = lessons.map(function (item) {
         const done = bag.passed && bag.passed[item[0]];
         return '<article class="word-row"><span class="grow">' + esc(item[1]) + '</span><span class="muted">' + (done ? "已完成" : "未完成") + '</span><button type="button" class="btn btn-ghost" data-act="phonics-open" data-id="' + item[0] + '">学习</button></article>';
@@ -2408,7 +2423,7 @@
     let empty = '<p class="muted">这一档没有符合条件的课时。</p>';
     if (level === "phonics") {
       const bag = Store.phonics();
-      const steps = [["l1", "第一课 · 5 个声调"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
+      const steps = [["l1", "第一课 · 5 个声调（5 小节）"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
       blocks = steps.map(function (item) {
         const done = bag.passed && bag.passed[item[0]];
         return '<article class="course-item"><div class="grow"><h2>' + esc(item[1]) + '</h2><p class="muted">' + (done ? "已完成" : "未完成") + '</p></div><div class="course-item-actions"><button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + item[0] + '">学习</button></div></article>';
@@ -3088,7 +3103,7 @@
     const xp = Store.award("phonics:practice", 5);
     if (fresh) toast("音标入门已完成，今日打卡已记下。");
     else if (xp) toast("本组已完成，今日打卡已记下。");
-    else if (/^l1[a-e]?$/.test(String(quiz.kind || ""))) toast("本组已完成。");
+    else if (/^l1[a-e]?$/.test(String(quiz.kind || ""))) toast("本节已完成。");
   }
 
   function exportBackup() {

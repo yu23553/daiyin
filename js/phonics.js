@@ -19,7 +19,7 @@
     { id: "rise", thai: "หมา", roman: "mǎa", zh: "狗", memo: "ǎ 表示低升。狗是 หมา mǎa。" }
   ];
 
-  // 第一课：5 组 × 30 个常用词听音辨调。完成任意一组（≥80%）可记今日打卡，并解锁后续音标课。
+  // 第一课 5 小节：每节学习词 + 约 30 题听音辨调（本节为主、掺少量他节）。任意一节 ≥80% 可打卡并解锁后续课。
   const TONE_SETS = [
     [
       { tone: "mid", thai: "มา", roman: "maa", zh: "来" },
@@ -371,7 +371,7 @@
 
   function openLesson(id, bag) {
     const p = passedMap(bag);
-    if (id === "l1" || id === "letters" || id === "review" || id === "point" || id === "report") return true;
+    if (id === "l1" || /^l1[a-e]$/.test(id) || id === "letters" || id === "review" || id === "point" || id === "report") return true;
     if (id === "l2" || id === "l2a") return !!p.l1;
     if (id === "l2b") return !!p.l2a;
     if (id === "l2c") return !!p.l2b;
@@ -418,22 +418,96 @@
     return /^l1[a-e]$/.test(String(kind || "")) || kind === "l1";
   }
 
+  const TONE_SECTION_META = [
+    { title: "日常动作", tip: "先听清本节词的五个声调，再测。มา / ไป / กิน 等会在测验里反复出现。" },
+    { title: "人物身体", tip: "爸爸、妈妈、头、耳… 升降调容易混，先跟读再测。" },
+    { title: "事物数量", tip: "车、碗、多少、贵便宜… 以本节词为主，并掺少量新词。" },
+    { title: "时间自然", tip: "天、月、风、雨… 先熟悉本节注音，再做听辨。" },
+    { title: "情感寒暄", tip: "喜欢、谢谢、你好… 学完本节例词再测，正确率 ≥80% 可打卡。" }
+  ];
+
+  function toneStudyWords(setIndex) {
+    const set = TONE_SETS[setIndex] || [];
+    const by = { mid: [], low: [], fall: [], high: [], rise: [] };
+    set.forEach(function (word) {
+      if (by[word.tone]) by[word.tone].push(word);
+    });
+    const picked = [];
+    const used = {};
+    // 每调固定取 2 个（顺序稳定，学习页与测验共用同一批）
+    ["mid", "low", "fall", "high", "rise"].forEach(function (tone) {
+      (by[tone] || []).slice(0, 2).forEach(function (word) {
+        picked.push(word);
+        used[word.thai] = true;
+      });
+    });
+    // 除基调槽位外再补同组词，拓宽学习面且与测验音标一致
+    set.forEach(function (word) {
+      if (picked.length >= 15) return;
+      if (used[word.thai]) return;
+      picked.push(word);
+      used[word.thai] = true;
+    });
+    return picked;
+  }
+
+  function toneRefStrip() {
+    return TONES.map(function (tone) {
+      return '<button type="button" class="chip" data-act="speak" data-thai="' + encodeURIComponent(tone.thai) + '">' +
+        esc(TONE_NAME[tone.id]) + " · " + esc(tone.roman) + "</button>";
+    }).join("");
+  }
+
+  function toneStudyCards(words) {
+    return words.map(function (word) {
+      return '<article class="card ph-card"><p class="pos">' + esc(TONE_NAME[word.tone] || "") + '</p>' +
+        '<p class="th" lang="th">' + esc(word.thai) + '</p><p class="roman">' + esc(word.roman) + "</p><p>" + esc(word.zh) + "</p>" +
+        '<div class="row" style="margin-top:10px">' + playButtons(word.thai) + "</div></article>";
+    }).join("");
+  }
+
   function tonePage(ui, bag) {
     const cards = TONES.map(function (tone) {
       return '<article class="card ph-card"><p class="pos">' + esc(TONE_NAME[tone.id]) + '</p><p class="roman">' + esc(TONE_MARK[tone.id]) + '</p><p class="th" lang="th">' + esc(tone.thai) + " " + esc(tone.roman) + "</p><p>" + esc(tone.zh) + "</p><p class=\"hint\">" + esc(tone.memo) + "</p>" +
         '<div class="row" style="margin-top:10px">' + playButtons(tone.thai) + "</div>" + ipaFold(TONE_IPA[tone.id]) + "</article>";
     }).join("");
     const passed = (bag && bag.passed) || {};
-    const setButtons = ["a", "b", "c", "d", "e"].map(function (letter, index) {
+    const sections = ["a", "b", "c", "d", "e"].map(function (letter, index) {
       const kind = toneSetKind(letter);
+      const meta = TONE_SECTION_META[index] || { title: "第 " + (index + 1) + " 节", tip: "" };
       const done = !!passed[kind];
-      const active = ui.quiz && ui.quiz.kind === kind && !ui.quiz.done;
-      return '<button type="button" class="btn' + (active ? " btn-primary" : "") + '" data-act="phonics-drill" data-id="' + kind + '">第 ' + (index + 1) + " 组 · 30 题" + (done ? " · 已练" : "") + "</button>";
+      return '<article class="ph-lesson"><p class="ph-lesson-name">第 ' + (index + 1) + " 节 · " + esc(meta.title) +
+        (done ? " · 已测" : "") + '</p><p class="muted">' + esc(meta.tip) + '</p>' +
+        '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">进入本节</button></article>';
     }).join("");
-    const drill = ui.quiz && isToneDrillKind(ui.quiz.kind) ? drillHtml(ui.quiz) : "";
-    return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1><p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。</p><div class="grid" style="margin-top:14px">' + cards + "</div>" +
-      '<section class="card" style="margin-top:16px"><h2>听音辨调</h2><p class="hint">共 5 组，每组约 30 个常用词。每天测完任意一组（正确率 ≥ 80%）即记打卡，并完成本课。</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:12px">' + setButtons + "</div></section>" +
-      (drill ? '<div style="margin-top:16px">' + drill + "</div>" : "") + "</div>";
+    return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1>' +
+      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，每节先学再测；测完任意一节（≥80%）即打卡并完成本课。</p>' +
+      '<div class="grid" style="margin-top:14px">' + cards + "</div>" +
+      '<div class="ph-lessons" style="margin-top:16px">' + sections + "</div></div>";
+  }
+
+  function toneSectionPage(ui, bag, kind) {
+    const letter = String(kind || "l1a").slice(2) || "a";
+    const index = Math.max(0, Math.min(4, letter.charCodeAt(0) - 97));
+    const meta = TONE_SECTION_META[index] || { title: "本节", tip: "" };
+    const study = toneStudyWords(index);
+    const passed = (bag && bag.passed) || {};
+    const done = !!passed[kind];
+    const drillActive = ui.quiz && ui.quiz.kind === kind;
+    const drill = drillActive ? drillHtml(ui.quiz) : "";
+    const startLabel = done ? "再测一次（30 题）" : "开始本节测试（约 30 题）";
+    return '<div class="page"><p class="muted" style="margin-top:12px">第一课 · 第 ' + (index + 1) + " 节</p>" +
+      '<h1>' + esc(meta.title) + "</h1>" +
+      '<p class="hint">' + esc(meta.tip) + "</p>" +
+      '<p class="muted" style="margin-top:10px">五调速记</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + toneRefStrip() + "</div>" +
+      '<section style="margin-top:16px"><h2>本节学习</h2><p class="hint">除基调例词外，再听这些与测验相关的词。点喇叭跟读，再去做测试。</p>' +
+      '<div class="grid" style="margin-top:12px">' + toneStudyCards(study) + "</div></section>" +
+      '<section class="card" style="margin-top:16px"><h2>本节测试</h2><p class="hint">约 30 题：以本节学习词为主，并掺少量未学词。正确率 ≥80% 记打卡。</p>' +
+      (done ? '<p class="muted">本节已测过。</p>' : "") +
+      (drillActive ? "" : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + kind + '" style="margin-top:10px">' + startLabel + "</button>") +
+      "</section>" +
+      (drill ? '<div style="margin-top:16px">' + drill + "</div>" : "") +
+      '<div class="row" style="margin-top:16px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button></div></div>';
   }
 
   function consPage(ui, bag) {
@@ -567,8 +641,23 @@
     let items = [];
     if (kind === "l1") kind = "l1a";
     if (/^l1[a-e]$/.test(kind)) {
-      const index = kind.charCodeAt(2) - 97;
-      items = toneDrillItems(TONE_SETS[index] || TONE_SETS[0]);
+      const index = Math.max(0, Math.min(4, kind.charCodeAt(2) - 97));
+      const set = TONE_SETS[index] || TONE_SETS[0];
+      const study = toneStudyWords(index);
+      const studyThai = {};
+      study.forEach(function (word) { studyThai[word.thai] = true; });
+      // 约 22 题来自本节（优先学习词），约 8 题掺其他组，共约 30 题
+      const focus = shuffle(set.slice());
+      const learned = focus.filter(function (word) { return studyThai[word.thai]; });
+      const restSame = focus.filter(function (word) { return !studyThai[word.thai]; });
+      const main = learned.concat(restSame).slice(0, 22);
+      const outsiders = [];
+      TONE_SETS.forEach(function (other, at) {
+        if (at === index) return;
+        outsiders.push.apply(outsiders, other);
+      });
+      const mix = shuffle(outsiders).slice(0, Math.max(0, 30 - main.length));
+      items = toneDrillItems(main.concat(mix));
     } else if (kind === "l2a" || kind === "l2b" || kind === "l2c") {
       const batch = kind.slice(2);
       const pool = CONS.filter(function (item) { return item.batch === batch; });
@@ -670,6 +759,7 @@
     const lesson = ui.lesson || "";
     if (!lesson) return home(ui, bag);
     if (lesson === "l1") return tonePage(ui, bag);
+    if (/^l1[a-e]$/.test(lesson)) return toneSectionPage(ui, bag, lesson);
     if (lesson === "l2") return consPage(ui, bag);
     if (lesson === "l3") return vowelPage(ui);
     if (lesson === "l4") return readPage(ui);
