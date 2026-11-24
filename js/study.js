@@ -3893,12 +3893,37 @@
   });
 
   function loadFonts() {
-    if (document.getElementById("site-fonts")) return;
+    if (document.getElementById("site-fonts")) return Promise.resolve();
     const link = document.createElement("link");
     link.id = "site-fonts";
     link.rel = "stylesheet";
     link.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Sarabun:wght@400;600;700&display=swap";
     document.head.appendChild(link);
+    return new Promise(function (resolve) {
+      let settled = false;
+      function done() {
+        if (settled) return;
+        settled = true;
+        resolve();
+      }
+      link.addEventListener("load", done);
+      link.addEventListener("error", done);
+      window.setTimeout(done, 900);
+    });
+  }
+
+  function waitFontsReady() {
+    if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+    return Promise.race([
+      document.fonts.ready.then(function () {}, function () {}),
+      new Promise(function (resolve) { window.setTimeout(resolve, 700); })
+    ]);
+  }
+
+  function afterPaint(done) {
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(done);
+    });
   }
 
   function hideBoot() {
@@ -3909,18 +3934,21 @@
     function close() {
       if (closed) return;
       closed = true;
-      window.setTimeout(function () {
-        boot.classList.add("is-done");
-        function remove() {
-          if (boot.parentNode) boot.parentNode.removeChild(boot);
-        }
-        if (reduce) {
-          remove();
-          return;
-        }
-        boot.addEventListener("transitionend", remove);
-        window.setTimeout(remove, 400);
-      }, reduce ? 0 : 180);
+      // 等首页已画在 boot 底下再淡出，避免露出半成品后整页重绘的闪一下。
+      afterPaint(function () {
+        window.setTimeout(function () {
+          boot.classList.add("is-done");
+          function remove() {
+            if (boot.parentNode) boot.parentNode.removeChild(boot);
+          }
+          if (reduce) {
+            remove();
+            return;
+          }
+          boot.addEventListener("transitionend", remove);
+          window.setTimeout(remove, 400);
+        }, reduce ? 0 : 120);
+      });
     }
     const css = document.getElementById("app-css");
     if (css && css.media === "print" && !css.sheet) {
@@ -3943,13 +3971,23 @@
     return lexLevelsUpTo(top);
   }
 
+  // 后台词库齐了：仅在当前页确实依赖未齐等级时才整页重绘，避免进首页后无端闪一下。
+  function shouldRedrawForLex() {
+    if (UI.view === "books" || UI.view === "book" || UI.view === "bucket" || UI.view === "progress") return true;
+    if (UI.view === "study" || UI.view === "quiz" || UI.view === "summary") return true;
+    if (UI.view === "course" || UI.view === "coursebook") return true;
+    return false;
+  }
+
   function prefetchRestLex() {
     const rest = levelOrder().filter(function (lv) { return !lexStatus[lv]; });
     if (!rest.length) return;
     const run = function () {
       rest.reduce(function (chain, level) {
         return chain.then(function () { return loadLex(level); });
-      }, Promise.resolve()).then(function () { draw(); });
+      }, Promise.resolve()).then(function () {
+        if (shouldRedrawForLex()) draw();
+      });
     };
     if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 4000 });
     else window.setTimeout(run, 1200);
@@ -3958,14 +3996,13 @@
   try {
     bindEdgeBack();
     const needed = bootLevels();
-    setBootStatus("正在准备词库…");
+    const fontsWait = loadFonts().then(waitFontsReady);
     const bootWait = Promise.all(needed.map(loadLex));
-    draw();
-    loadFonts();
-    bootWait.then(function (results) {
+    // 词库未齐时不先画首页：否则 0/0 → 真数据 会在 boot 淡出时叠成一次「刷新」。
+    Promise.all([bootWait, fontsWait]).then(function (parts) {
+      const results = parts[0] || [];
       const ok = results.every(Boolean);
       if (!ok) setBootStatus("词库下载失败，可进入后点按重试");
-      else setBootStatus("准备完成");
       draw();
       hideBoot();
       if (ok) prefetchRestLex();
