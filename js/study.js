@@ -1319,11 +1319,12 @@
       '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始今天" : actionLabel(progress.status, current.id)) + "</button></div>";
     const slide = UI.homeSlide ? 1 : 0;
     const checked = Store.checkInTotal();
+    const lit = Store.checkedInToday();
     return '<div class="page home-page">' +
       '<section class="home-hero" aria-label="RianThai">' +
       '<div class="home-mark" aria-hidden="true">ไ</div>' +
       '<div><p class="home-brand">RianThai</p><p class="home-tag">把泰语听清，再说出口</p></div></section>' +
-      '<button type="button" class="home-streak-row" data-act="go" data-view="stats" aria-label="查看统计">' + streakIcon() +
+      '<button type="button" class="home-streak-row' + (lit ? " is-lit" : "") + '" data-act="go" data-view="stats" aria-label="查看统计">' + streakIcon() +
       '<div><p class="today-streak-label">累计打卡</p><p class="today-streak-num">' + checked + "<span>天</span></p></div></button>" +
       '<section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
       '<div class="today-switch" role="tablist"><button type="button" class="today-tab' + (slide === 0 ? " is-on" : "") + '" data-act="home-slide" data-id="0">单词</button><button type="button" class="today-tab' + (slide === 1 ? " is-on" : "") + '" data-act="home-slide" data-id="1">课程</button></div>' +

@@ -253,6 +253,16 @@
     return Object.keys(days).length;
   }
 
+  function checkedInToday() {
+    const today = dateKey();
+    if (state.streak && state.streak.last === today) return true;
+    const awards = state.awards && state.awards[today];
+    if (awards && typeof awards === "object" && Object.keys(awards).length) return true;
+    const offline = state.offline && state.offline[today];
+    if (offline && typeof offline === "object" && Object.keys(offline).some(function (id) { return !!offline[id]; })) return true;
+    return false;
+  }
+
   function award(key, xp) {
     const today = dateKey();
     state.awards[today] = state.awards[today] || {};
@@ -517,6 +527,7 @@
     isDone: isDone,
     award: award,
     checkInTotal: checkInTotal,
+    checkedInToday: checkedInToday,
     grade: grade,
     dueWords: dueWords,
     card: function (id) { return state.srs[id] || null; },
