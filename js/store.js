@@ -441,6 +441,7 @@
     if (!state.phonics || typeof state.phonics !== "object") state.phonics = {};
     if (!state.phonics.passed || typeof state.phonics.passed !== "object") state.phonics.passed = {};
     if (!state.phonics.srs || typeof state.phonics.srs !== "object") state.phonics.srs = {};
+    if (!state.phonics.section || typeof state.phonics.section !== "object") state.phonics.section = {};
     return state.phonics;
   }
 

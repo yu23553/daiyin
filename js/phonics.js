@@ -464,12 +464,35 @@
     }).join("");
   }
 
-  function toneStudyCards(words) {
-    return words.map(function (word) {
-      return '<article class="card ph-card"><p class="pos">' + esc(TONE_NAME[word.tone] || "") + '</p>' +
-        '<p class="th" lang="th">' + esc(word.thai) + '</p><p class="roman">' + esc(word.roman) + "</p><p>" + esc(word.zh) + "</p>" +
-        '<div class="row" style="margin-top:10px">' + playButtons(word.thai) + "</div></article>";
-    }).join("");
+  function sectionState(bag, kind) {
+    if (!bag.section || typeof bag.section !== "object") bag.section = {};
+    if (!bag.section[kind] || typeof bag.section[kind] !== "object") {
+      bag.section[kind] = { studyIndex: 0, studyDone: false, quiz: null };
+    }
+    const row = bag.section[kind];
+    if (typeof row.studyIndex !== "number" || row.studyIndex < 0) row.studyIndex = 0;
+    row.studyDone = !!row.studyDone;
+    return row;
+  }
+
+  function advanceStudy(bag, kind) {
+    const words = toneStudyWords(Math.max(0, Math.min(4, (kind.charCodeAt(2) || 97) - 97)));
+    const row = sectionState(bag, kind);
+    if (row.studyDone) return row;
+    if (row.studyIndex >= words.length - 1) {
+      row.studyIndex = words.length - 1;
+      row.studyDone = true;
+    } else {
+      row.studyIndex += 1;
+    }
+    return row;
+  }
+
+  function resetStudy(bag, kind) {
+    const row = sectionState(bag, kind);
+    row.studyIndex = 0;
+    row.studyDone = false;
+    return row;
   }
 
   function tonePage(ui, bag) {
@@ -494,7 +517,7 @@
         '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">进入本节</button></article>';
     }).join("");
     return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1>' +
-      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，须按顺序学习：完成上一节（≥80%）后解锁下一节；五节都通过后完成本课。每节通过可记打卡。</p>' +
+      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，按序学习。每节一次学一个词，学完再测；中途退出进度保留。完成上一节（≥80%）解锁下一节；五节都通过后完成本课。</p>' +
       '<div class="grid" style="margin-top:14px">' + cards + "</div>" +
       '<div class="ph-lessons" style="margin-top:16px">' + sections + "</div></div>";
   }
@@ -503,30 +526,62 @@
     const letter = String(kind || "l1a").slice(2) || "a";
     const index = Math.max(0, Math.min(4, letter.charCodeAt(0) - 97));
     const meta = TONE_SECTION_META[index] || { title: "本节", tip: "" };
-    const study = toneStudyWords(index);
+    const words = toneStudyWords(index);
+    const prog = sectionState(bag, kind);
     const passed = (bag && bag.passed) || {};
-    const done = !!passed[kind];
-    const drillActive = ui.quiz && ui.quiz.kind === kind;
-    const drill = drillActive ? drillHtml(ui.quiz) : "";
-    const startLabel = done ? "再测一次（30 题）" : "开始本节测试（约 30 题）";
+    const sectionPassed = !!passed[kind];
+    const quiz = ui.quiz && ui.quiz.kind === kind ? ui.quiz : null;
     const nextLetter = index < 4 ? String.fromCharCode(97 + index + 1) : "";
     const nextKind = nextLetter ? toneSetKind(nextLetter) : "";
     const nextOpen = nextKind && openLesson(nextKind, bag);
     const nextBtn = nextOpen
       ? '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + nextKind + '">进入第 ' + (index + 2) + " 节</button>"
       : "";
-    return '<div class="page"><p class="muted" style="margin-top:12px">第一课 · 第 ' + (index + 1) + " 节</p>" +
+    const backRow = '<div class="row" style="margin-top:16px;flex-wrap:wrap;gap:8px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button>' + nextBtn + "</div>";
+    const head = '<div class="page"><p class="muted" style="margin-top:12px">第一课 · 第 ' + (index + 1) + " 节</p>" +
       '<h1>' + esc(meta.title) + "</h1>" +
       '<p class="hint">' + esc(meta.tip) + "</p>" +
-      '<p class="muted" style="margin-top:10px">五调速记</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + toneRefStrip() + "</div>" +
-      '<section style="margin-top:16px"><h2>本节学习</h2><p class="hint">除基调例词外，再听这些与测验相关的词。点喇叭跟读，再去做测试。</p>' +
-      '<div class="grid" style="margin-top:12px">' + toneStudyCards(study) + "</div></section>" +
-      '<section class="card" style="margin-top:16px"><h2>本节测试</h2><p class="hint">约 30 题：以本节学习词为主，并掺少量未学词。正确率 ≥80% 记打卡，并解锁下一节。</p>' +
-      (done ? '<p class="muted">本节已测过。</p>' : "") +
-      (drillActive ? "" : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + kind + '" style="margin-top:10px">' + startLabel + "</button>") +
-      "</section>" +
-      (drill ? '<div style="margin-top:16px">' + drill + "</div>" : "") +
-      '<div class="row" style="margin-top:16px;flex-wrap:wrap;gap:8px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button>' + nextBtn + "</div></div>";
+      '<p class="muted" style="margin-top:10px">五调速记</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + toneRefStrip() + "</div>";
+
+    // 测验进行中或刚结束：一次一题，进度已持久化
+    if (quiz) {
+      return head +
+        '<section style="margin-top:16px"><h2>本节测试</h2><p class="hint">一次一题，中途退出后再进可续答。正确率 ≥80% 记打卡并解锁下一节。</p>' +
+        '<div style="margin-top:12px">' + drillHtml(quiz) + "</div></section>" + backRow + "</div>";
+    }
+
+    // 学完：可选测验 / 再学 / 返回
+    if (prog.studyDone) {
+      const quizLabel = sectionPassed ? "再测一次（约 30 题）" : "进入测验（约 30 题）";
+      return head +
+        '<section class="card" style="margin-top:16px"><h2>本节词已学完</h2>' +
+        '<p class="hint">共 ' + words.length + " 个词。可进入测验，或再学一遍。进度已保存。</p>" +
+        (sectionPassed ? '<p class="muted">本节测验已通过。</p>' : "") +
+        '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">' +
+        '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + kind + '">' + quizLabel + "</button>" +
+        '<button type="button" class="btn" data-act="phonics-study-reset" data-id="' + kind + '">再学一遍</button>' +
+        "</div></section>" + backRow + "</div>";
+    }
+
+    // 学习：一次一词
+    const at = Math.min(prog.studyIndex, Math.max(0, words.length - 1));
+    const word = words[at] || words[0];
+    const last = at >= words.length - 1;
+    const nextLabel = last ? "学完" : "下一个";
+    return head +
+      '<section style="margin-top:16px"><h2>本节学习</h2>' +
+      '<p class="day-progress">学习 ' + (at + 1) + " / " + words.length + "</p>" +
+      '<div class="stage" style="padding-top:8px">' +
+      '<article class="card ph-card" style="text-align:center">' +
+      '<p class="pos">' + esc(TONE_NAME[word.tone] || "") + "</p>" +
+      '<p class="th" lang="th" style="font-size:56px;margin:8px 0">' + esc(word.thai) + "</p>" +
+      '<p class="roman" style="font-size:28px">' + esc(word.roman) + "</p>" +
+      "<p>" + esc(word.zh) + "</p>" +
+      '<div class="row" style="margin-top:14px;justify-content:center">' + playButtons(word.thai) + "</div>" +
+      '<p class="hint" style="margin-top:10px">可反复点听，听清后再下一个。</p>' +
+      "</article>" +
+      '<div class="actions"><button type="button" class="btn btn-primary" data-act="phonics-study-next" data-id="' + kind + '">' + nextLabel + "</button></div>" +
+      "</div></section>" + backRow + "</div>";
   }
 
   function consPage(ui, bag) {
@@ -620,9 +675,16 @@
   function drillHtml(quiz) {
     if (quiz.done) {
       const rate = quiz.total ? Math.round(100 * quiz.correct / quiz.total) : 0;
-      return '<section class="card"><h2>答对 ' + quiz.correct + " / " + quiz.total + "</h2><p class=\"hint\">正确率 " + rate + "%。" + (quiz.passed ? "本课已完成。" : "达到 80% 后本课完成，可再做一次。") + "</p>" +
+      const toneDone = /^l1[a-e]$/.test(String(quiz.kind || ""));
+      const passHint = toneDone
+        ? (quiz.passed ? "本节已通过。" : "达到 80% 后本节通过，可再做一次。")
+        : (quiz.passed ? "本课已完成。" : "达到 80% 后本课完成，可再做一次。");
+      return '<section class="card"><h2>答对 ' + quiz.correct + " / " + quiz.total + "</h2><p class=\"hint\">正确率 " + rate + "%。" + passHint + "</p>" +
         (quiz.wrongs.length ? "<p>记入复习的题：</p><ul>" + quiz.wrongs.map(function (item) { return "<li>" + esc(item.answerLabel) + "</li>"; }).join("") + "</ul>" : "<p>没有错题。</p>") +
-        '<button type="button" class="btn" data-act="phonics-drill" data-id="' + esc(quiz.kind) + '">再做一次</button></section>';
+        '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px">' +
+        '<button type="button" class="btn" data-act="phonics-drill" data-id="' + esc(quiz.kind) + '">再做一次</button>' +
+        (toneDone ? '<button type="button" class="btn" data-act="phonics-quiz-dismiss" data-id="' + esc(quiz.kind) + '">返回本节</button>' : "") +
+        "</div></section>";
     }
     const item = quiz.items[quiz.index];
     const options = item.options.map(function (opt) {
@@ -806,6 +868,10 @@
     a1Deck: a1Deck,
     toneOf: toneOf,
     buildThai: buildThai,
-    TONE_NAME: TONE_NAME
+    TONE_NAME: TONE_NAME,
+    sectionState: sectionState,
+    advanceStudy: advanceStudy,
+    resetStudy: resetStudy,
+    toneStudyWords: toneStudyWords
   };
 })();

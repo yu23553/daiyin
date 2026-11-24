@@ -3079,6 +3079,28 @@
     });
   }
 
+  function restoreToneSectionQuiz(kind) {
+    if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return null;
+    const row = PHONICS.sectionState(Store.phonics(), kind);
+    if (!row.quiz || row.quiz.kind !== kind) return null;
+    try {
+      return JSON.parse(JSON.stringify(row.quiz));
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function persistToneSectionQuiz(quiz) {
+    if (!quiz || !/^l1[a-e]$/.test(String(quiz.kind || ""))) return;
+    const row = PHONICS.sectionState(Store.phonics(), quiz.kind);
+    try {
+      row.quiz = JSON.parse(JSON.stringify(quiz));
+    } catch (err) {
+      row.quiz = quiz;
+    }
+    Store.phonicsSave();
+  }
+
   function finishPhonicsQuiz(quiz) {
     quiz.done = true;
     quiz.passed = !!(quiz.total && quiz.correct / quiz.total >= 0.8);
@@ -3098,6 +3120,7 @@
       };
       Store.phonicsSave();
     }
+    persistToneSectionQuiz(quiz);
     if (!quiz.passed) return;
     const fresh = Store.phonicsPass(quiz.kind);
     const xp = Store.award("phonics:practice", 5);
@@ -3581,7 +3604,7 @@
           }
           const beforeLate = snapshot();
           UI.phonics.lesson = id && PHONICS.openLesson(id, Store.phonics()) ? id : "";
-          UI.phonics.quiz = null;
+          UI.phonics.quiz = restoreToneSectionQuiz(UI.phonics.lesson);
           UI.phonics.flipped = false;
           if (UI.phonics.lesson === "l4") {
             UI.phonics.deck = PHONICS.a1Deck();
@@ -3600,7 +3623,7 @@
         return;
       }
       UI.phonics.lesson = id;
-      UI.phonics.quiz = null;
+      UI.phonics.quiz = restoreToneSectionQuiz(id);
       UI.phonics.flipped = false;
       if (id === "l4") {
         UI.phonics.deck = PHONICS.a1Deck();
@@ -3628,8 +3651,38 @@
       draw();
       return;
     }
+    if (act === "phonics-study-next") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      PHONICS.advanceStudy(Store.phonics(), kind);
+      Store.phonicsSave();
+      draw();
+      return;
+    }
+    if (act === "phonics-study-reset") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      PHONICS.resetStudy(Store.phonics(), kind);
+      const row = PHONICS.sectionState(Store.phonics(), kind);
+      row.quiz = null;
+      Store.phonicsSave();
+      UI.phonics.quiz = null;
+      draw();
+      return;
+    }
+    if (act === "phonics-quiz-dismiss") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      const row = PHONICS.sectionState(Store.phonics(), kind);
+      row.quiz = null;
+      Store.phonicsSave();
+      UI.phonics.quiz = null;
+      draw();
+      return;
+    }
     if (act === "phonics-drill") {
       UI.phonics.quiz = button.dataset.id === "l5" ? PHONICS.makeExam() : PHONICS.makeDrill(button.dataset.id);
+      persistToneSectionQuiz(UI.phonics.quiz);
       draw();
       return;
     }
@@ -3647,6 +3700,7 @@
           answerLabel: item.answerLabel
         });
       }
+      persistToneSectionQuiz(quiz);
       draw();
       return;
     }
@@ -3656,6 +3710,7 @@
       quiz.picked = "";
       quiz.index += 1;
       if (quiz.index >= quiz.items.length) finishPhonicsQuiz(quiz);
+      else persistToneSectionQuiz(quiz);
       draw();
       return;
     }
