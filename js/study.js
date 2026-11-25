@@ -515,9 +515,6 @@
   // 设置页等复杂含义旁的 ⓘ：点开短说明（商用 App 风，不堆长文）。
   const INFO_TIPS = {
     "cloud-tts": "打开后优先用云端语音读泰语；关闭则优先本机语音，失败时再自动改用云端。",
-    sync: "登录后进度可同步到云端。未登录时进度只留在本机。",
-    "sync-now": "立刻把本机进度上传，并拉取云端最新进度。",
-    theme: "手动开关深色界面。也可点「跟随系统」，随系统外观变化。",
     quiz: "短测几个词，给出建议起始等级（A1 / A2 / B1）。",
     backup: "导出或导入本机的学习进度、笔记与词本设置。不会自动上传云端。",
     voice: "例句句尾礼貌词：男生用 ครับ，女生用 ค่ะ。可选只显示一种或两种都显示。"
@@ -2099,17 +2096,17 @@
       ? '<div class="set-notes">' + (notes || '<p class="muted">还没有笔记。学习时可以写下。</p>') + "</div>"
       : "";
     const accountBtns = session
-      ? '<span class="set-action-with-info"><button type="button" class="btn" data-act="sync-now">立即同步</button>' + infoMark("sync-now") + '</span><button type="button" class="btn" data-act="logout">退出登录</button>'
-      : '<button type="button" class="btn btn-primary" data-act="go" data-view="auth">登录同步进度</button>' + infoMark("sync");
+      ? '<button type="button" class="btn" data-act="sync-now">立即同步</button><button type="button" class="btn" data-act="logout">退出登录</button>'
+      : '<button type="button" class="btn btn-primary" data-act="go" data-view="auth">登录同步进度</button>';
     return '<div class="page settings-page"><h1 class="settings-title">设置</h1>' +
       '<section class="set-panel set-account">' +
       '<div class="set-account-top"><div><p class="set-kicker">账号</p><h2>' + esc(session ? session.username : "未登录") + '</h2></div>' +
-      '<span class="sync-pill is-' + syncTone + '"><span>' + esc(Account.statusLabel()) + "</span>" + infoMark("sync") + "</span></div>" +
+      '<span class="sync-pill is-' + syncTone + '">' + esc(Account.statusLabel()) + "</span></div>" +
       '<div class="set-line"><span class="muted">等级 · ' + esc(levelText) + infoMark("quiz") + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">测评</button></div>' +
       '<div class="set-actions set-actions-row">' + accountBtns + "</div></section>" +
       '<p class="set-label">外观与朗读</p>' +
       '<section class="set-panel">' +
-      '<div class="set-row"><div><p class="set-item-title">深色模式' + infoMark("theme") + '</p><p class="muted">' + themeLabel() + '</p></div>' +
+      '<div class="set-row"><div><p class="set-item-title">深色模式</p><p class="muted">' + themeLabel() + '</p></div>' +
       '<label class="switch"><input type="checkbox" data-act="theme-toggle"' + (resolvedTheme() === "dark" ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
       '<button type="button" class="text-btn set-inline-link" data-act="theme-system">跟随系统</button>' +
       '<div class="set-divider"></div>' +
