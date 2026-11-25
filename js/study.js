@@ -63,7 +63,7 @@
     local.lessonNotes = {};
     migrated = true;
   }
-  if (["A1", "A2", "B1", "B2"].indexOf(local.courseLevel) < 0) {
+  if (["A1", "A2", "B1", "B2", "grammar"].indexOf(local.courseLevel) < 0) {
     local.courseLevel = "A1";
     migrated = true;
   }
@@ -2139,7 +2139,8 @@
   }
 
   function unitIsOpen(unit) {
-    const list = courseUnitList();
+    // 语法轨单独按序解锁，不卡住 A1–B2 主线
+    const list = unit && unit.level === "grammar" ? courseUnits("grammar") : courseUnitList();
     const index = list.findIndex(function (item) { return item.id === unit.id; });
     if (index <= 0) return true;
     const prev = list[index - 1];
@@ -2148,7 +2149,7 @@
 
   function findUnit(id) {
     if (!id) return null;
-    const list = courseUnitList();
+    const list = courseUnitList().concat(courseUnits("grammar"));
     for (let i = 0; i < list.length; i += 1) {
       if (list[i].id === id) return list[i];
     }
@@ -2290,7 +2291,9 @@
   }
 
   function courseHome(lessons) {
-    const level = BOOKS.some(function (book) { return book.id === UI.courseLevel; }) ? UI.courseLevel : "A1";
+    const level = UI.courseLevel === "grammar" || BOOKS.some(function (book) { return book.id === UI.courseLevel; })
+      ? UI.courseLevel
+      : "A1";
     UI.courseLevel = level;
     const filters = ["全部", "待学习", "待复习", "已完成"];
     const levels = BOOKS.map(function (book) {
@@ -2316,17 +2319,34 @@
         (locked ? '<p class="course-lock-tip">完成上一单元后解锁</p><p class="course-meta"><span class="state state-lock">未解锁</span></p>' : '<p class="course-meta">已完成 ' + done + " / " + items.length + " · " + width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + width + '%"></span></div>' + review) +
         "</article>";
     }).join("");
-    const levelPending = !lexLevelsUpTo(level).every(lexReady);
-    const blocks = levelPending ? "" : courseUnits(level).map(function (unit, index) { return unitRow(unit, index); }).join("");
-    const empty = levelPending ? '<p class="muted">词库下载中，请稍候…</p>' : '<p class="muted">这一档没有符合条件的课时。</p>';
+    const grammarLessons = lessons.filter(function (lesson) { return lesson.level === "grammar"; });
+    const grammarDone = grammarLessons.filter(function (lesson) { return courseRec(lesson.id).done; }).length;
+    const grammarWidth = grammarLessons.length ? Math.round(100 * grammarDone / grammarLessons.length) : 0;
+    const grammarOn = level === "grammar";
+    const grammarCard = '<article class="course-level tone-grammar' + (grammarOn ? " is-on" : "") + '">' +
+      '<button type="button" class="course-level-pick" data-act="course-level" data-id="grammar"><span>语法学习</span></button>' +
+      '<p class="course-meta">已完成 ' + grammarDone + " / " + grammarLessons.length + " · " + grammarWidth + '%</p>' +
+      '<div class="course-bar" aria-hidden="true"><span style="width:' + grammarWidth + '%"></span></div></article>';
+    let blocks = "";
+    let empty = '<p class="muted">这一档没有符合条件的课时。</p>';
+    if (level === "grammar") {
+      kickLexUpTo("A1");
+      const pending = !lexLevelsUpTo("A1").every(lexReady);
+      blocks = pending ? "" : courseUnits("grammar").map(function (unit, index) { return unitRow(unit, index); }).join("");
+      empty = pending ? '<p class="muted">词库下载中，请稍候…</p>' : '<p class="muted">语法学习按主题顺序解锁。</p>';
+    } else {
+      const levelPending = !lexLevelsUpTo(level).every(lexReady);
+      blocks = levelPending ? "" : courseUnits(level).map(function (unit, index) { return unitRow(unit, index); }).join("");
+      empty = levelPending ? '<p class="muted">词库下载中，请稍候…</p>' : empty;
+    }
     const phonics = bookProgress(phonicsBook());
     const phonicsLabel = phonics.status === "done" ? "复习" : phonics.status === "active" ? "继续" : "学习";
     const phonicsCard = '<article class="course-level tone-phonics"><button type="button" class="course-level-pick" data-act="phonics-open"><span>音标入门</span></button><p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div><button type="button" class="btn" data-act="phonics-open">' + phonicsLabel + "</button></article>";
     return '<div class="page course-page"><p class="course-lead">场景化泰语课程，搭配 Paiboon+ 音标，单词句子同步学习</p>' +
-      '<div class="course-levels">' + phonicsCard + levels + "</div>" +
-      '<div class="course-filters">' + filters.map(function (name) {
+      '<div class="course-levels">' + phonicsCard + grammarCard + levels + "</div>" +
+      (level === "grammar" ? "" : '<div class="course-filters">' + filters.map(function (name) {
         return '<button type="button" class="chip' + (UI.courseFilter === name ? " is-on" : "") + '" data-act="course-filter" data-id="' + name + '">' + name + "</button>";
-      }).join("") + "</div>" +
+      }).join("") + "</div>") +
       '<div class="course-list">' + (blocks || empty) + "</div></div>";
   }
 
@@ -3165,14 +3185,16 @@
       return;
     }
     if (act === "course-level" || act === "course-pick") {
-      if (BOOKS.some(function (book) { return book.id === button.dataset.id; })) {
-        UI.courseLevel = button.dataset.id;
-        local.courseLevel = button.dataset.id;
+      const pick = button.dataset.id || "";
+      if (pick === "grammar" || BOOKS.some(function (book) { return book.id === pick; })) {
+        UI.courseLevel = pick;
+        local.courseLevel = pick;
         UI.courseUnit = "";
         saveLocal();
-        if (!lexLevelsUpTo(button.dataset.id).every(lexReady)) {
+        const needLex = pick === "grammar" ? "A1" : pick;
+        if (!lexLevelsUpTo(needLex).every(lexReady)) {
           toast("正在下载词库，请稍候");
-          kickLexUpTo(button.dataset.id);
+          kickLexUpTo(needLex);
         }
       }
       draw();
