@@ -517,6 +517,61 @@
     toast._t = setTimeout(function () { el.classList.remove("show"); }, 2400);
   }
 
+  // 设置页等复杂含义旁的 ⓘ：点开短说明（商用 App 风，不堆长文）。
+  const INFO_TIPS = {
+    "cloud-tts": "打开后优先用云端语音读泰语；关闭则优先本机语音，失败时再自动改用云端。",
+    quiz: "短测几个词，给出建议起始等级（A1 / A2 / B1）。",
+    backup: "导出或导入本机的学习进度、笔记与词本设置。不会自动上传云端。",
+    voice: "例句句尾礼貌词：男生用 ครับ，女生用 ค่ะ。可选只显示一种或两种都显示。"
+  };
+
+  function infoMark(id) {
+    const text = INFO_TIPS[id] || "";
+    if (!text) return "";
+    return '<button type="button" class="info-mark" data-act="info-open" data-info="' + esc(id) + '" aria-label="说明" aria-expanded="false">ⓘ</button>';
+  }
+
+  function hideInfoPop() {
+    const pop = document.getElementById("info-pop");
+    if (pop) pop.hidden = true;
+    document.querySelectorAll(".info-mark[aria-expanded='true']").forEach(function (btn) {
+      btn.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function showInfoPop(anchor, text) {
+    let pop = document.getElementById("info-pop");
+    if (!pop) {
+      pop = document.createElement("div");
+      pop.id = "info-pop";
+      pop.className = "info-pop";
+      pop.setAttribute("role", "dialog");
+      pop.hidden = true;
+      document.body.appendChild(pop);
+    }
+    pop.textContent = text;
+    pop.hidden = false;
+    document.querySelectorAll(".info-mark[aria-expanded='true']").forEach(function (btn) {
+      btn.setAttribute("aria-expanded", "false");
+    });
+    if (anchor) anchor.setAttribute("aria-expanded", "true");
+    const pad = 12;
+    const rect = anchor.getBoundingClientRect();
+    const width = Math.min(280, window.innerWidth - pad * 2);
+    pop.style.width = width + "px";
+    pop.style.left = "0px";
+    pop.style.top = "0px";
+    const size = pop.getBoundingClientRect();
+    let left = rect.left + rect.width / 2 - size.width / 2;
+    left = Math.max(pad, Math.min(left, window.innerWidth - size.width - pad));
+    let top = rect.bottom + 8;
+    if (top + size.height > window.innerHeight - pad) {
+      top = Math.max(pad, rect.top - size.height - 8);
+    }
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+  }
+
   let playToken = 0;
   let playingButton = null;
   let playingHorn = null;
@@ -1887,10 +1942,10 @@
         return '<button type="button" class="chip' + (on ? " is-on" : "") + '" data-act="' + act + '" data-val="' + item[0] + '">' + esc(item[1]) + "</button>";
       }).join("");
     }
-    return '<section class="card plan-card">' +
+    return '<section class="card plan-card tight">' +
       "<h2>单词学习模式</h2><div class=\"chips\">" + picks(modes, studyMode(), "set-mode") + "</div>" +
       "<h2>学习顺序</h2><div class=\"chips\">" + picks(orders, studyOrder(), "set-order") + "</div>" +
-      "<h2>开口身份</h2><div class=\"chips\">" + picks(voices, local.voice || "both", "set-voice") + "</div></section>";
+      "<h2>开口身份" + infoMark("voice") + "</h2><div class=\"chips\">" + picks(voices, local.voice || "both", "set-voice") + "</div></section>";
   }
 
   function planSettingsPage() {
@@ -2145,7 +2200,7 @@
       '<section class="set-panel set-account">' +
       '<div class="set-account-top"><div><p class="set-kicker">账号</p><h2>' + esc(session ? session.username : "未登录") + '</h2></div>' +
       '<span class="sync-pill is-' + syncTone + '">' + esc(Account.statusLabel()) + "</span></div>" +
-      '<div class="set-line"><span class="muted">等级 · ' + esc(levelText) + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">测评</button></div>' +
+      '<div class="set-line"><span class="muted">等级 · ' + esc(levelText) + infoMark("quiz") + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">测评</button></div>' +
       '<div class="set-actions set-actions-row">' + accountBtns + "</div></section>" +
       '<p class="set-label">外观与朗读</p>' +
       '<section class="set-panel">' +
@@ -2153,8 +2208,8 @@
       '<label class="switch"><input type="checkbox" data-act="theme-toggle"' + (resolvedTheme() === "dark" ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
       '<button type="button" class="text-btn set-inline-link" data-act="theme-system">跟随系统</button>' +
       '<div class="set-divider"></div>' +
-      '<div class="set-row"><div><p class="set-item-title">云端朗读</p><p class="muted">' + esc(voice.label) + '</p></div>' +
-      '<label class="switch" title="优先云端"><input type="checkbox" data-act="tts-cloud"' + (local.preferCloudTts ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
+      '<div class="set-row"><div><p class="set-item-title">云端朗读' + infoMark("cloud-tts") + '</p><p class="muted">' + esc(voice.label) + '</p></div>' +
+      '<label class="switch" title="优先云端" aria-label="优先云端"><input type="checkbox" data-act="tts-cloud"' + (local.preferCloudTts ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
       "</section>" +
       '<p class="set-label">学习</p>' +
       '<section class="set-panel set-list">' +
@@ -2167,6 +2222,7 @@
       "</section>" +
       '<p class="set-label">数据</p>' +
       '<section class="set-panel">' +
+      '<div class="set-row set-row-plain"><p class="set-item-title">备份' + infoMark("backup") + '</p></div>' +
       '<div class="set-actions set-actions-row"><button type="button" class="btn" data-act="export-backup">导出</button><button type="button" class="btn" data-act="import-backup">导入</button></div>' +
       '<input id="backup-file" type="file" accept="application/json,.json" data-act="import-file" hidden></section>' +
       '<p class="set-label">关于</p>' +
@@ -3098,6 +3154,7 @@
 
   function draw() {
     const root = document.getElementById("app");
+    hideInfoPop();
     if (endSlide) endSlide();
     const nextKey = currentPageKey();
     const changed = pageKey !== "" && pageKey !== nextKey;
@@ -3301,6 +3358,22 @@
   }
 
   function onClick(event) {
+    const infoBtn = event.target.closest("[data-act='info-open']");
+    if (infoBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = infoBtn.dataset.info || "";
+      const text = INFO_TIPS[id] || infoBtn.dataset.tip || "";
+      if (!text) return;
+      const pop = document.getElementById("info-pop");
+      if (pop && !pop.hidden && infoBtn.getAttribute("aria-expanded") === "true") {
+        hideInfoPop();
+        return;
+      }
+      showInfoPop(infoBtn, text);
+      return;
+    }
+    if (!event.target.closest("#info-pop")) hideInfoPop();
     const button = event.target.closest("[data-act]");
     if (!button) return;
     const act = button.dataset.act;
@@ -4192,6 +4265,10 @@
   }
 
   document.body.addEventListener("click", onClick);
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") hideInfoPop();
+  });
+  window.addEventListener("resize", hideInfoPop);
   document.body.addEventListener("change", function (event) {
     const input = event.target;
     if (!input || !input.dataset) return;
