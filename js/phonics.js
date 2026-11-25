@@ -19,6 +19,170 @@
     { id: "rise", thai: "หมา", roman: "mǎa", zh: "狗", memo: "ǎ 表示低升。狗是 หมา mǎa。" }
   ];
 
+  // 第一课 5 小节按序解锁：每节学习词 + 约 30 题（本节为主、掺少量他节）。五节都 ≥80% 后记 l1 完成。
+  const TONE_SETS = [
+    [
+      { tone: "mid", thai: "มา", roman: "maa", zh: "来" },
+      { tone: "mid", thai: "ดี", roman: "dii", zh: "好" },
+      { tone: "mid", thai: "ไป", roman: "bpai", zh: "去" },
+      { tone: "mid", thai: "กิน", roman: "gin", zh: "吃" },
+      { tone: "mid", thai: "ดู", roman: "duu", zh: "看" },
+      { tone: "mid", thai: "กา", roman: "gaa", zh: "乌鸦" },
+      { tone: "low", thai: "ป่า", roman: "bpàa", zh: "森林" },
+      { tone: "low", thai: "ไก่", roman: "gài", zh: "鸡" },
+      { tone: "low", thai: "ไข่", roman: "khài", zh: "蛋" },
+      { tone: "low", thai: "ใส่", roman: "sài", zh: "放；穿" },
+      { tone: "low", thai: "เปิด", roman: "bpèrt", zh: "开" },
+      { tone: "low", thai: "ปิด", roman: "bpìt", zh: "关" },
+      { tone: "fall", thai: "บ้าน", roman: "bâan", zh: "家" },
+      { tone: "fall", thai: "ห้า", roman: "hâa", zh: "五" },
+      { tone: "fall", thai: "ไม่", roman: "mâi", zh: "不" },
+      { tone: "fall", thai: "ได้", roman: "dâai", zh: "能；得到" },
+      { tone: "fall", thai: "ข้าว", roman: "khâao", zh: "米饭" },
+      { tone: "fall", thai: "แม่", roman: "mɛ̂ɛ", zh: "妈妈" },
+      { tone: "high", thai: "ม้า", roman: "máa", zh: "马" },
+      { tone: "high", thai: "น้า", roman: "náa", zh: "叔／姨" },
+      { tone: "high", thai: "ค้า", roman: "kháa", zh: "买卖" },
+      { tone: "high", thai: "ป้า", roman: "bpáa", zh: "阿姨" },
+      { tone: "high", thai: "เช้า", roman: "cháao", zh: "早上" },
+      { tone: "high", thai: "ท้อง", roman: "thóng", zh: "肚子" },
+      { tone: "rise", thai: "หมา", roman: "mǎa", zh: "狗" },
+      { tone: "rise", thai: "ขาว", roman: "khǎao", zh: "白" },
+      { tone: "rise", thai: "หนาว", roman: "nǎao", zh: "冷" },
+      { tone: "rise", thai: "หา", roman: "hǎa", zh: "找" },
+      { tone: "rise", thai: "ขอ", roman: "khǒɔ", zh: "请给" },
+      { tone: "rise", thai: "ผี", roman: "phǐi", zh: "鬼" }
+    ],
+    [
+      { tone: "mid", thai: "นอน", roman: "nɔɔn", zh: "睡" },
+      { tone: "mid", thai: "เดิน", roman: "dəən", zh: "走" },
+      { tone: "mid", thai: "ฟัง", roman: "fang", zh: "听" },
+      { tone: "mid", thai: "พูด", roman: "phûut", zh: "说" },
+      { tone: "mid", thai: "อ่าน", roman: "àan", zh: "读" },
+      { tone: "mid", thai: "เขียน", roman: "khǐan", zh: "写" },
+      { tone: "low", thai: "ปาก", roman: "bpàak", zh: "嘴" },
+      { tone: "low", thai: "เจ็บ", roman: "jèp", zh: "疼" },
+      { tone: "low", thai: "เด็ก", roman: "dèk", zh: "孩子" },
+      { tone: "low", thai: "เป็ด", roman: "bpèt", zh: "鸭子" },
+      { tone: "low", thai: "กบ", roman: "gòp", zh: "青蛙" },
+      { tone: "low", thai: "จับ", roman: "jàp", zh: "抓" },
+      { tone: "fall", thai: "พ่อ", roman: "phɔ̂ɔ", zh: "爸爸" },
+      { tone: "fall", thai: "พี่", roman: "phîi", zh: "哥哥／姐姐" },
+      { tone: "fall", thai: "เสื้อ", roman: "sûua", zh: "衣服" },
+      { tone: "fall", thai: "ใกล้", roman: "glâi", zh: "近" },
+      { tone: "fall", thai: "ชื่อ", roman: "chʉ̂ʉ", zh: "名字" },
+      { tone: "fall", thai: "ใช่", roman: "châi", zh: "是" },
+      { tone: "high", thai: "ฟ้า", roman: "fáa", zh: "天空" },
+      { tone: "high", thai: "ช้าง", roman: "cháang", zh: "大象" },
+      { tone: "high", thai: "ซ้าย", roman: "sáai", zh: "左" },
+      { tone: "high", thai: "ช้า", roman: "cháa", zh: "慢" },
+      { tone: "high", thai: "น้ำ", roman: "náam", zh: "水" },
+      { tone: "high", thai: "ร้อน", roman: "rón", zh: "热" },
+      { tone: "rise", thai: "เขา", roman: "khǎo", zh: "他／山" },
+      { tone: "rise", thai: "ฉัน", roman: "chǎn", zh: "我（女）" },
+      { tone: "rise", thai: "ผม", roman: "phǒm", zh: "我（男）" },
+      { tone: "rise", thai: "หู", roman: "hǔu", zh: "耳朵" },
+      { tone: "rise", thai: "สี", roman: "sǐi", zh: "颜色" },
+      { tone: "rise", thai: "หัว", roman: "hǔa", zh: "头" }
+    ],
+    [
+      { tone: "mid", thai: "รถ", roman: "rót", zh: "车" },
+      { tone: "mid", thai: "เรือ", roman: "rua", zh: "船" },
+      { tone: "mid", thai: "บิน", roman: "bin", zh: "飞" },
+      { tone: "mid", thai: "จาน", roman: "jaan", zh: "盘子" },
+      { tone: "mid", thai: "ชาม", roman: "chaam", zh: "碗" },
+      { tone: "mid", thai: "คน", roman: "khon", zh: "人" },
+      { tone: "low", thai: "ตัด", roman: "dtàt", zh: "剪；切" },
+      { tone: "low", thai: "กฎ", roman: "gòt", zh: "规则" },
+      { tone: "low", thai: "สด", roman: "sòt", zh: "新鲜" },
+      { tone: "low", thai: "ถูก", roman: "thùuk", zh: "便宜；对" },
+      { tone: "low", thai: "กี่", roman: "gìi", zh: "几" },
+      { tone: "low", thai: "บาท", roman: "bàat", zh: "铢" },
+      { tone: "fall", thai: "มาก", roman: "mâak", zh: "很多" },
+      { tone: "fall", thai: "ผ้า", roman: "phâa", zh: "布" },
+      { tone: "fall", thai: "ใหม่", roman: "mài", zh: "新" },
+      { tone: "fall", thai: "ใหญ่", roman: "yài", zh: "大" },
+      { tone: "fall", thai: "ช่วย", roman: "chûai", zh: "帮" },
+      { tone: "fall", thai: "ชอบ", roman: "chɔ̂ɔp", zh: "喜欢" },
+      { tone: "high", thai: "พริก", roman: "phrík", zh: "辣椒" },
+      { tone: "high", thai: "โต๊ะ", roman: "tó", zh: "桌子" },
+      { tone: "high", thai: "เท้า", roman: "tháo", zh: "脚" },
+      { tone: "high", thai: "นก", roman: "nók", zh: "鸟" },
+      { tone: "high", thai: "กุ้ง", roman: "gûng", zh: "虾" },
+      { tone: "high", thai: "คิด", roman: "khít", zh: "想" },
+      { tone: "rise", thai: "หมอ", roman: "mɔ̌ɔ", zh: "医生" },
+      { tone: "rise", thai: "หญิง", roman: "yǐng", zh: "女" },
+      { tone: "rise", thai: "ฝน", roman: "fǒn", zh: "雨" },
+      { tone: "rise", thai: "สูง", roman: "sǔung", zh: "高" },
+      { tone: "rise", thai: "สวย", roman: "sǔai", zh: "漂亮" },
+      { tone: "rise", thai: "หิว", roman: "hǐu", zh: "饿" }
+    ],
+    [
+      { tone: "mid", thai: "วัน", roman: "wan", zh: "天；日" },
+      { tone: "mid", thai: "เดือน", roman: "dʉan", zh: "月" },
+      { tone: "mid", thai: "ปี", roman: "bpii", zh: "年" },
+      { tone: "mid", thai: "เย็น", roman: "yen", zh: "傍晚；凉" },
+      { tone: "mid", thai: "คืน", roman: "khuuen", zh: "夜晚" },
+      { tone: "mid", thai: "ลม", roman: "lom", zh: "风" },
+      { tone: "low", thai: "อยาก", roman: "yàak", zh: "想要" },
+      { tone: "low", thai: "อ่าน", roman: "àan", zh: "读" },
+      { tone: "low", thai: "ออก", roman: "ɔ̀ɔk", zh: "出去" },
+      { tone: "low", thai: "อ่อน", roman: "ɔ̀ɔn", zh: "软；弱" },
+      { tone: "low", thai: "แดด", roman: "dɛ̀ɛt", zh: "阳光" },
+      { tone: "low", thai: "ต่ำ", roman: "dtàm", zh: "低" },
+      { tone: "fall", thai: "รู้", roman: "rúu", zh: "知道" },
+      { tone: "fall", thai: "พูด", roman: "phûut", zh: "说" },
+      { tone: "fall", thai: "ลูก", roman: "lûuk", zh: "孩子；水果" },
+      { tone: "fall", thai: "ลูกค้า", roman: "lûuk-kháa", zh: "顾客" },
+      { tone: "fall", thai: "กล้วย", roman: "glûai", zh: "香蕉" },
+      { tone: "fall", thai: "ส้ม", roman: "sôm", zh: "橙子" },
+      { tone: "high", thai: "เล็ก", roman: "lék", zh: "小" },
+      { tone: "high", thai: "เพชร", roman: "phét", zh: "钻石" },
+      { tone: "high", thai: "เมฆ", roman: "mêek", zh: "云" },
+      { tone: "high", thai: "สั้น", roman: "sân", zh: "短" },
+      { tone: "high", thai: "รัก", roman: "rák", zh: "爱" },
+      { tone: "high", thai: "นม", roman: "nom", zh: "奶" },
+      { tone: "rise", thai: "เขียน", roman: "khǐan", zh: "写" },
+      { tone: "rise", thai: "ป่วย", roman: "bpuài", zh: "生病" },
+      { tone: "rise", thai: "เหนื่อย", roman: "nùeai", zh: "累" },
+      { tone: "rise", thai: "ดาว", roman: "daao", zh: "星星" },
+      { tone: "rise", thai: "จันทร์", roman: "jan", zh: "月亮" },
+      { tone: "rise", thai: "ปลา", roman: "bplaa", zh: "鱼" }
+    ],
+    [
+      { tone: "mid", thai: "จีน", roman: "jiin", zh: "中国" },
+      { tone: "mid", thai: "ไทย", roman: "thai", zh: "泰国" },
+      { tone: "mid", thai: "ไกล", roman: "glai", zh: "远" },
+      { tone: "mid", thai: "ดัง", roman: "dang", zh: "响；有名" },
+      { tone: "mid", thai: "ครู", roman: "khruu", zh: "老师" },
+      { tone: "mid", thai: "เพื่อน", roman: "phʉ̂an", zh: "朋友" },
+      { tone: "low", thai: "เก่ง", roman: "gèng", zh: "厉害" },
+      { tone: "low", thai: "แข็ง", roman: "khɛ̌ng", zh: "硬" },
+      { tone: "low", thai: "เก่า", roman: "gào", zh: "旧" },
+      { tone: "low", thai: "เก็บ", roman: "gèp", zh: "收；存" },
+      { tone: "low", thai: "เกิด", roman: "gèrt", zh: "出生" },
+      { tone: "low", thai: "กลัว", roman: "gluua", zh: "怕" },
+      { tone: "fall", thai: "โกรธ", roman: "gròot", zh: "生气" },
+      { tone: "fall", thai: "เสื้อ", roman: "sûua", zh: "衣服" },
+      { tone: "fall", thai: "เข้าใจ", roman: "khâo-jai", zh: "明白" },
+      { tone: "fall", thai: "ขอบคุณ", roman: "khɔ̀ɔp-khun", zh: "谢谢" },
+      { tone: "fall", thai: "เชิญ", roman: "chəən", zh: "请" },
+      { tone: "fall", thai: "ลาก่อน", roman: "laa-gɔ̀ɔn", zh: "再见" },
+      { tone: "high", thai: "แมว", roman: "mɛɛo", zh: "猫" },
+      { tone: "high", thai: "แก้ว", roman: "gɛ̂ɛo", zh: "杯子；玻璃" },
+      { tone: "high", thai: "ไม้", roman: "máai", zh: "木头" },
+      { tone: "high", thai: "ไม้แข็ง", roman: "máai khɛ̌ng", zh: "硬木" },
+      { tone: "high", thai: "น้ำตาล", roman: "náam-dtaan", zh: "糖" },
+      { tone: "high", thai: "กาแฟ", roman: "gaa-fɛɛ", zh: "咖啡" },
+      { tone: "rise", thai: "สวัสดี", roman: "sà-wàt-dii", zh: "你好" },
+      { tone: "rise", thai: "ขอโทษ", roman: "khɔ̌ɔ-thôot", zh: "对不起" },
+      { tone: "rise", thai: "หาย", roman: "hǎai", zh: "消失；痊愈" },
+      { tone: "rise", thai: "หายใจ", roman: "hǎai-jai", zh: "呼吸" },
+      { tone: "rise", thai: "ผอม", roman: "phɔ̌ɔm", zh: "瘦" },
+      { tone: "rise", thai: "ถุง", roman: "thǔng", zh: "袋子" }
+    ]
+  ];
+
   const CONS = [
     { id: "g", pb: "g", th: "ก", cls: "mid", batch: "a", ipa: "k", alt: "" },
     { id: "j", pb: "j", th: "จ", cls: "mid", batch: "a", ipa: "tɕ", alt: "" },
@@ -208,6 +372,12 @@
   function openLesson(id, bag) {
     const p = passedMap(bag);
     if (id === "l1" || id === "letters" || id === "review" || id === "point" || id === "report") return true;
+    // 第一课五节按序：l1a 常开，其后须完成上一节
+    if (id === "l1a") return true;
+    if (id === "l1b") return !!p.l1a;
+    if (id === "l1c") return !!p.l1b;
+    if (id === "l1d") return !!p.l1c;
+    if (id === "l1e") return !!p.l1d;
     if (id === "l2" || id === "l2a") return !!p.l1;
     if (id === "l2b") return !!p.l2a;
     if (id === "l2c") return !!p.l2b;
@@ -246,13 +416,180 @@
       '<section class="card ph-letters"><h2>泰文字母（可选）</h2><p class="muted">书写学习不属于主线五课；阅读背词卡片请以 Paiboon+ 注音为准。</p><button type="button" class="btn" data-act="phonics-open" data-id="letters">打开字母页</button></section></div>';
   }
 
+  function toneSetKind(letter) {
+    return "l1" + letter;
+  }
+
+  function isToneDrillKind(kind) {
+    return /^l1[a-e]$/.test(String(kind || "")) || kind === "l1";
+  }
+
+  const TONE_SECTION_META = [
+    { title: "日常动作", tip: "先听清本节词的五个声调，再测。มา / ไป / กิน 等会在测验里反复出现。" },
+    { title: "人物身体", tip: "爸爸、妈妈、头、耳… 升降调容易混，先跟读再测。" },
+    { title: "事物数量", tip: "车、碗、多少、贵便宜… 以本节词为主，并掺少量新词。" },
+    { title: "时间自然", tip: "天、月、风、雨… 先熟悉本节注音，再做听辨。" },
+    { title: "情感寒暄", tip: "喜欢、谢谢、你好… 学完本节例词再测；五节都通过后完成本课。" }
+  ];
+
+  function toneStudyWords(setIndex) {
+    const set = TONE_SETS[setIndex] || [];
+    const by = { mid: [], low: [], fall: [], high: [], rise: [] };
+    set.forEach(function (word) {
+      if (by[word.tone]) by[word.tone].push(word);
+    });
+    const picked = [];
+    const used = {};
+    // 每调固定取 2 个（顺序稳定，学习页与测验共用同一批）
+    ["mid", "low", "fall", "high", "rise"].forEach(function (tone) {
+      (by[tone] || []).slice(0, 2).forEach(function (word) {
+        picked.push(word);
+        used[word.thai] = true;
+      });
+    });
+    // 除基调槽位外再补同组词，拓宽学习面且与测验音标一致
+    set.forEach(function (word) {
+      if (picked.length >= 15) return;
+      if (used[word.thai]) return;
+      picked.push(word);
+      used[word.thai] = true;
+    });
+    return picked;
+  }
+
+  function toneRefStrip() {
+    return TONES.map(function (tone) {
+      return '<button type="button" class="chip" data-act="speak" data-thai="' + encodeURIComponent(tone.thai) + '">' +
+        esc(TONE_NAME[tone.id]) + " · " + esc(tone.roman) + "</button>";
+    }).join("");
+  }
+
+  function sectionState(bag, kind) {
+    if (!bag.section || typeof bag.section !== "object") bag.section = {};
+    if (!bag.section[kind] || typeof bag.section[kind] !== "object") {
+      bag.section[kind] = { studyIndex: 0, studyDone: false, quiz: null };
+    }
+    const row = bag.section[kind];
+    if (typeof row.studyIndex !== "number" || row.studyIndex < 0) row.studyIndex = 0;
+    row.studyDone = !!row.studyDone;
+    return row;
+  }
+
+  function advanceStudy(bag, kind) {
+    const words = toneStudyWords(Math.max(0, Math.min(4, (kind.charCodeAt(2) || 97) - 97)));
+    const row = sectionState(bag, kind);
+    if (row.studyDone) return row;
+    if (row.studyIndex >= words.length - 1) {
+      row.studyIndex = words.length - 1;
+      row.studyDone = true;
+    } else {
+      row.studyIndex += 1;
+    }
+    return row;
+  }
+
+  function retreatStudy(bag, kind) {
+    const row = sectionState(bag, kind);
+    row.studyDone = false;
+    if (row.studyIndex > 0) row.studyIndex -= 1;
+    return row;
+  }
+
+  function resetStudy(bag, kind) {
+    const row = sectionState(bag, kind);
+    row.studyIndex = 0;
+    row.studyDone = false;
+    return row;
+  }
+
   function tonePage(ui, bag) {
     const cards = TONES.map(function (tone) {
       return '<article class="card ph-card"><p class="pos">' + esc(TONE_NAME[tone.id]) + '</p><p class="roman">' + esc(TONE_MARK[tone.id]) + '</p><p class="th" lang="th">' + esc(tone.thai) + " " + esc(tone.roman) + "</p><p>" + esc(tone.zh) + "</p><p class=\"hint\">" + esc(tone.memo) + "</p>" +
         '<div class="row" style="margin-top:10px">' + playButtons(tone.thai) + "</div>" + ipaFold(TONE_IPA[tone.id]) + "</article>";
     }).join("");
-    const drill = ui.quiz && ui.quiz.kind === "l1" ? drillHtml(ui.quiz) : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="l1">听音选声调</button>';
-    return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1><p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。</p><div class="grid" style="margin-top:14px">' + cards + "</div><div style=\"margin-top:16px\">" + drill + "</div></div>";
+    const passed = (bag && bag.passed) || {};
+    const lock = '<svg class="lock-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+    const sections = ["a", "b", "c", "d", "e"].map(function (letter, index) {
+      const kind = toneSetKind(letter);
+      const meta = TONE_SECTION_META[index] || { title: "第 " + (index + 1) + " 节", tip: "" };
+      const done = !!passed[kind];
+      const opened = openLesson(kind, bag);
+      const title = "第 " + (index + 1) + " 节 · " + esc(meta.title) + (done ? " · 已测" : "");
+      if (!opened) {
+        return '<article class="ph-lesson is-locked"><p class="ph-lesson-name">' + lock + title +
+          '</p><p class="muted">请先完成第 ' + index + " 节。</p>" +
+          '<button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">未解锁</button></article>';
+      }
+      return '<article class="ph-lesson"><p class="ph-lesson-name">' + title + '</p><p class="muted">' + esc(meta.tip) + '</p>' +
+        '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">进入本节</button></article>';
+    }).join("");
+    return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1>' +
+      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，按序学习。每节一次学一个词，学完再测；中途退出进度保留。完成上一节（≥80%）解锁下一节；五节都通过后完成本课。</p>' +
+      '<div class="grid" style="margin-top:14px">' + cards + "</div>" +
+      '<div class="ph-lessons" style="margin-top:16px">' + sections + "</div></div>";
+  }
+
+  function toneSectionPage(ui, bag, kind) {
+    const letter = String(kind || "l1a").slice(2) || "a";
+    const index = Math.max(0, Math.min(4, letter.charCodeAt(0) - 97));
+    const meta = TONE_SECTION_META[index] || { title: "本节", tip: "" };
+    const words = toneStudyWords(index);
+    const prog = sectionState(bag, kind);
+    const passed = (bag && bag.passed) || {};
+    const sectionPassed = !!passed[kind];
+    const quiz = ui.quiz && ui.quiz.kind === kind ? ui.quiz : null;
+    const nextLetter = index < 4 ? String.fromCharCode(97 + index + 1) : "";
+    const nextKind = nextLetter ? toneSetKind(nextLetter) : "";
+    const nextOpen = nextKind && openLesson(nextKind, bag);
+    const nextBtn = nextOpen
+      ? '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + nextKind + '">进入第 ' + (index + 2) + " 节</button>"
+      : "";
+    const backRow = '<div class="row" style="margin-top:16px;flex-wrap:wrap;gap:8px"><button type="button" class="btn" data-act="phonics-open" data-id="l1">返回第一课目录</button>' + nextBtn + "</div>";
+    const head = '<div class="page"><p class="muted" style="margin-top:12px">第一课 · 第 ' + (index + 1) + " 节</p>" +
+      '<h1>' + esc(meta.title) + "</h1>" +
+      '<p class="muted" style="margin-top:10px">五调速记</p><div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">' + toneRefStrip() + "</div>";
+
+    // 测验进行中或刚结束：一次一题，进度已持久化
+    if (quiz) {
+      return head +
+        '<section style="margin-top:16px"><h2>本节测试</h2><p class="hint">一次一题，中途退出后再进可续答。正确率 ≥80% 记打卡并解锁下一节。</p>' +
+        '<div style="margin-top:12px">' + drillHtml(quiz) + "</div></section>" + backRow + "</div>";
+    }
+
+    // 学完：可选测验 / 再学 / 返回
+    if (prog.studyDone) {
+      const quizLabel = sectionPassed ? "再测一次（约 30 题）" : "进入测验（约 30 题）";
+      return head +
+        '<section class="card" style="margin-top:16px"><h2>本节词已学完</h2>' +
+        '<p class="hint">共 ' + words.length + " 个词。可进入测验，或再学一遍。进度已保存。</p>" +
+        (sectionPassed ? '<p class="muted">本节测验已通过。</p>' : "") +
+        '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">' +
+        '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + kind + '">' + quizLabel + "</button>" +
+        '<button type="button" class="btn" data-act="phonics-study-reset" data-id="' + kind + '">再学一遍</button>' +
+        "</div></section>" + backRow + "</div>";
+    }
+
+    // 学习：一次一词
+    const at = Math.min(prog.studyIndex, Math.max(0, words.length - 1));
+    const word = words[at] || words[0];
+    const last = at >= words.length - 1;
+    const nextLabel = last ? "学完" : "下一个";
+    const prevDisabled = at <= 0 ? " disabled" : "";
+    return head +
+      '<section style="margin-top:16px"><h2>本节学习</h2>' +
+      '<p class="day-progress">学习 ' + (at + 1) + " / " + words.length + "</p>" +
+      '<div class="stage tone-study-stage">' +
+      '<article class="card ph-card tone-study-card">' +
+      '<p class="pos">' + esc(TONE_NAME[word.tone] || "") + "</p>" +
+      '<p class="th tone-study-thai" lang="th">' + esc(word.thai) + "</p>" +
+      '<p class="roman tone-study-roman">' + esc(word.roman) + "</p>" +
+      '<p class="tone-study-zh">' + esc(word.zh) + "</p>" +
+      '<div class="row tone-study-plays">' + playButtons(word.thai) + "</div>" +
+      "</article>" +
+      '<div class="actions tone-study-actions">' +
+      '<button type="button" class="btn" data-act="phonics-study-prev" data-id="' + kind + '"' + prevDisabled + ">上一个</button>" +
+      '<button type="button" class="btn btn-primary" data-act="phonics-study-next" data-id="' + kind + '">' + nextLabel + "</button>" +
+      "</div></div></section>" + backRow + "</div>";
   }
 
   function consPage(ui, bag) {
@@ -346,9 +683,16 @@
   function drillHtml(quiz) {
     if (quiz.done) {
       const rate = quiz.total ? Math.round(100 * quiz.correct / quiz.total) : 0;
-      return '<section class="card"><h2>答对 ' + quiz.correct + " / " + quiz.total + "</h2><p class=\"hint\">正确率 " + rate + "%。" + (quiz.passed ? "本课已完成。" : "达到 80% 后本课完成，可再做一次。") + "</p>" +
+      const toneDone = /^l1[a-e]$/.test(String(quiz.kind || ""));
+      const passHint = toneDone
+        ? (quiz.passed ? "本节已通过。" : "达到 80% 后本节通过，可再做一次。")
+        : (quiz.passed ? "本课已完成。" : "达到 80% 后本课完成，可再做一次。");
+      return '<section class="card"><h2>答对 ' + quiz.correct + " / " + quiz.total + "</h2><p class=\"hint\">正确率 " + rate + "%。" + passHint + "</p>" +
         (quiz.wrongs.length ? "<p>记入复习的题：</p><ul>" + quiz.wrongs.map(function (item) { return "<li>" + esc(item.answerLabel) + "</li>"; }).join("") + "</ul>" : "<p>没有错题。</p>") +
-        '<button type="button" class="btn" data-act="phonics-drill" data-id="' + esc(quiz.kind) + '">再做一次</button></section>';
+        '<div class="row" style="flex-wrap:wrap;gap:8px;margin-top:10px">' +
+        '<button type="button" class="btn" data-act="phonics-drill" data-id="' + esc(quiz.kind) + '">再做一次</button>' +
+        (toneDone ? '<button type="button" class="btn" data-act="phonics-quiz-dismiss" data-id="' + esc(quiz.kind) + '">返回本节</button>' : "") +
+        "</div></section>";
     }
     const item = quiz.items[quiz.index];
     const options = item.options.map(function (opt) {
@@ -364,18 +708,45 @@
       (quiz.picked ? '<p class="hint">答案：' + esc(item.answerLabel) + '</p><button type="button" class="btn btn-primary" data-act="ph-next">下一题</button>' : "") + "</section>";
   }
 
+  function toneDrillItems(pool) {
+    const options = ["mid", "low", "fall", "high", "rise"].map(function (id) {
+      return { id: id, label: TONE_NAME[id] + " " + TONE_MARK[id] };
+    });
+    return shuffle(pool.slice()).map(function (word) {
+      const syl = String(word.roman || "").split(/[\s-]+/).filter(Boolean)[0] || "";
+      const tone = word.tone || toneOf(syl);
+      return {
+        type: "tone",
+        thai: word.thai,
+        prompt: "听一听，选出「" + word.zh + "」的声调。",
+        answer: tone,
+        answerLabel: TONE_NAME[tone] + " " + TONE_MARK[tone] + " · " + word.roman + " " + word.zh,
+        options: options
+      };
+    });
+  }
+
   function makeDrill(kind) {
     let items = [];
-    if (kind === "l1") {
-      items = shuffle(TONES).map(function (tone) {
-        return {
-          thai: tone.thai,
-          prompt: "听一听，选出声调。",
-          answer: tone.id,
-          answerLabel: TONE_NAME[tone.id] + " " + TONE_MARK[tone.id],
-          options: ["mid", "low", "fall", "high", "rise"].map(function (id) { return { id: id, label: TONE_NAME[id] + " " + TONE_MARK[id] }; })
-        };
+    if (kind === "l1") kind = "l1a";
+    if (/^l1[a-e]$/.test(kind)) {
+      const index = Math.max(0, Math.min(4, kind.charCodeAt(2) - 97));
+      const set = TONE_SETS[index] || TONE_SETS[0];
+      const study = toneStudyWords(index);
+      const studyThai = {};
+      study.forEach(function (word) { studyThai[word.thai] = true; });
+      // 约 22 题来自本节（优先学习词），约 8 题掺其他组，共约 30 题
+      const focus = shuffle(set.slice());
+      const learned = focus.filter(function (word) { return studyThai[word.thai]; });
+      const restSame = focus.filter(function (word) { return !studyThai[word.thai]; });
+      const main = learned.concat(restSame).slice(0, 22);
+      const outsiders = [];
+      TONE_SETS.forEach(function (other, at) {
+        if (at === index) return;
+        outsiders.push.apply(outsiders, other);
       });
+      const mix = shuffle(outsiders).slice(0, Math.max(0, 30 - main.length));
+      items = toneDrillItems(main.concat(mix));
     } else if (kind === "l2a" || kind === "l2b" || kind === "l2c") {
       const batch = kind.slice(2);
       const pool = CONS.filter(function (item) { return item.batch === batch; });
@@ -477,6 +848,7 @@
     const lesson = ui.lesson || "";
     if (!lesson) return home(ui, bag);
     if (lesson === "l1") return tonePage(ui, bag);
+    if (/^l1[a-e]$/.test(lesson)) return toneSectionPage(ui, bag, lesson);
     if (lesson === "l2") return consPage(ui, bag);
     if (lesson === "l3") return vowelPage(ui);
     if (lesson === "l4") return readPage(ui);
@@ -504,6 +876,11 @@
     a1Deck: a1Deck,
     toneOf: toneOf,
     buildThai: buildThai,
-    TONE_NAME: TONE_NAME
+    TONE_NAME: TONE_NAME,
+    sectionState: sectionState,
+    advanceStudy: advanceStudy,
+    retreatStudy: retreatStudy,
+    resetStudy: resetStudy,
+    toneStudyWords: toneStudyWords
   };
 })();
