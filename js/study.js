@@ -417,8 +417,25 @@
     return { id: "phonics", level: "音标", topic: "音标", title: "音标入门", desc: "声调｜声母｜元音｜拼读。可选词本，不计入等级解锁。", levelId: "" };
   }
 
+  function grammarBook() {
+    return { id: "grammar", level: "语法", topic: "语法", title: "语法学习", desc: "礼貌助词、否定、疑问、量词、体貌与常用句式。按主题顺序解锁。", levelId: "" };
+  }
+
+  function courseTrackTitle(id) {
+    if (id === "phonics") return phonicsBook().title;
+    if (id === "grammar") return grammarBook().title;
+    const book = BOOKS.filter(function (item) { return item.id === id; })[0];
+    return book ? book.title : id;
+  }
+
+  function courseCurrentBadge(on) {
+    if (!on) return "";
+    return '<p class="course-current"><span class="course-current-check" aria-hidden="true">✓</span>当前课程</p>';
+  }
+
   function bookById(id) {
     if (id === "phonics") return phonicsBook();
+    if (id === "grammar") return grammarBook();
     if (id === "star") return { id: "star", level: "生词", topic: "生词", title: "生词本", desc: "单独收藏的词" };
     const custom = (local.custom || []).filter(function (book) { return book.id === id; })[0];
     if (custom) return { id: custom.id, level: "自建", topic: "自建", title: custom.title, desc: "自己整理的词本", wordIds: custom.wordIds || [] };
@@ -1358,7 +1375,8 @@
     local.courseLevel = id;
     UI.courseLevel = id;
     if (id === "phonics") return phonicsBook();
-    return BOOKS.filter(function (book) { return book.id === id; })[0];
+    if (id === "grammar") return grammarBook();
+    return BOOKS.filter(function (book) { return book.id === id; })[0] || BOOKS[0];
   }
 
   function coursePack(level) {
@@ -1387,24 +1405,25 @@
 
   function homeCourseBlock() {
     const book = courseBook();
+    const head = '<div class="today-course"><p class="eyebrow">当前课程</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button><p class="desc">' + esc(book.desc || "") + "</p>";
     if (book.id === "phonics") {
       const progress = bookProgress(book);
       const left = Math.max(0, progress.total - progress.mastered);
       const label = progress.status === "done" ? "复习" : progress.status === "active" ? "继续" : "开始今天";
-      return '<div class="today-course"><p class="eyebrow">课程学习</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button><p class="desc">' + esc(book.desc || "") + "</p>" +
+      return head +
         '<p class="progress-label">已完成 ' + progress.mastered + " / " + progress.total + " 课</p>" +
         '<div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
         '<div class="today-stats"><div><b>' + (left || progress.total) + '</b><span>今日课时</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>5</b><span>声调</span></div></div>' +
         '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="course-today">' + label + "</button></div></div>";
     }
     const pack = coursePack(book.id);
-    const locked = levelCourseLocked(book.id);
+    const locked = book.id === "grammar" ? false : levelCourseLocked(book.id);
     const per = Math.max(1, Number(local.dailyLessons) || 1);
     const todayLessons = Math.min(per, pack.pending.length || pack.total);
     const todayWords = locked ? 0 : courseWordsFor(pack, todayLessons);
     const width = pack.total ? Math.round(100 * pack.done / pack.total) : 0;
     const label = locked ? "未解锁" : (pack.pending.length ? "开始今天" : "复习");
-    return '<div class="today-course"><p class="eyebrow">课程学习</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button><p class="desc">' + esc(book.desc || "") + "</p>" +
+    return head +
       (locked ? '<p class="progress-label">完成上一单元后解锁</p>' : '<p class="progress-label">已完成 ' + pack.done + " / " + pack.total + " 课</p>") +
       '<div class="mini-track"><span style="width:' + (locked ? 0 : width) + '%"></span></div>' +
       '<div class="today-stats"><div><b>' + (locked ? 0 : todayLessons) + '</b><span>今日课时</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayWords + '</b><span>生词</span></div></div>' +
@@ -1423,9 +1442,15 @@
   }
 
   function coursePickBar(current) {
-    return '<nav class="course-pick">' + BOOKS.map(function (book) {
-      const locked = levelCourseLocked(book.id);
-      return '<button type="button" class="' + (book.id === current.id ? "is-on" : "") + (locked ? " is-locked" : "") + '" data-act="course-pick" data-id="' + esc(book.id) + '">' + (locked ? courseLockIcon() : "") + "<span>" + esc(book.title) + "</span></button>";
+    const tracks = [phonicsBook(), grammarBook()].concat(BOOKS);
+    return '<nav class="course-pick">' + tracks.map(function (book) {
+      const on = book.id === current.id;
+      const locked = book.id === "phonics" || book.id === "grammar" ? false : levelCourseLocked(book.id);
+      return '<button type="button" class="' + (on ? "is-on" : "") + (locked ? " is-locked" : "") + '" data-act="course-pick" data-id="' + esc(book.id) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
+        (locked ? courseLockIcon() : "") +
+        "<span>" + esc(book.title) + "</span>" +
+        (on ? '<small class="course-pick-now">当前</small>' : "") +
+        "</button>";
     }).join("") + "</nav>";
   }
 
@@ -2399,9 +2424,10 @@
       if (bookPending(book)) {
         kickLexUpTo(book.id);
         const loadFailed = lexLevelsUpTo(book.id).some(function (lv) { return lexStatus[lv] === "error"; });
-        return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + '">' +
-          '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '">' +
+        return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + '"' + (on ? ' aria-current="true"' : "") + ">" +
+          '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
           "<span>" + esc(book.title) + "</span></button>" +
+          courseCurrentBadge(on) +
           '<p class="course-meta">' + (loadFailed ? "词库下载失败，点按重试" : "词库下载中…") + "</p></article>";
       }
       const items = lessons.filter(function (lesson) { return lesson.level === book.id; });
@@ -2411,9 +2437,10 @@
       const review = locked || !levelUnitsOpen(book.id)
         ? ""
         : '<button type="button" class="btn" data-act="course-unit" data-id="' + esc(book.id) + '">复习本单元全部</button>';
-      return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + (locked ? " is-locked" : "") + '">' +
-        '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '">' +
+      return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + (locked ? " is-locked" : "") + '"' + (on ? ' aria-current="true"' : "") + ">" +
+        '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
         (locked ? courseLockIcon() : "") + "<span>" + esc(book.title) + "</span></button>" +
+        courseCurrentBadge(on) +
         (locked ? '<p class="course-lock-tip">完成上一单元后解锁</p><p class="course-meta"><span class="state state-lock">未解锁</span></p>' : '<p class="course-meta">已完成 ' + done + " / " + items.length + " · " + width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + width + '%"></span></div>' + review) +
         "</article>";
     }).join("");
@@ -2421,14 +2448,18 @@
     const grammarDone = grammarLessons.filter(function (lesson) { return courseRec(lesson.id).done; }).length;
     const grammarWidth = grammarLessons.length ? Math.round(100 * grammarDone / grammarLessons.length) : 0;
     const grammarOn = level === "grammar";
-    const grammarCard = '<article class="course-level tone-grammar' + (grammarOn ? " is-on" : "") + '">' +
-      '<button type="button" class="course-level-pick" data-act="course-level" data-id="grammar"><span>语法学习</span></button>' +
+    const grammarCard = '<article class="course-level tone-grammar' + (grammarOn ? " is-on" : "") + '"' + (grammarOn ? ' aria-current="true"' : "") + ">" +
+      '<button type="button" class="course-level-pick" data-act="course-level" data-id="grammar" aria-pressed="' + (grammarOn ? "true" : "false") + '"><span>语法学习</span></button>' +
+      courseCurrentBadge(grammarOn) +
       '<p class="course-meta">已完成 ' + grammarDone + " / " + grammarLessons.length + " · " + grammarWidth + '%</p>' +
       '<div class="course-bar" aria-hidden="true"><span style="width:' + grammarWidth + '%"></span></div></article>';
     const phonics = bookProgress(phonicsBook());
     const phonicsOn = level === "phonics";
     // 与 A1–B2 等级卡一致：只展示进度，不在卡上再放大按钮；点选等级后用下方列表进入
-    const phonicsCard = '<article class="course-level tone-phonics' + (phonicsOn ? " is-on" : "") + '"><button type="button" class="course-level-pick" data-act="course-level" data-id="phonics"><span>音标入门</span></button><p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div></article>';
+    const phonicsCard = '<article class="course-level tone-phonics' + (phonicsOn ? " is-on" : "") + '"' + (phonicsOn ? ' aria-current="true"' : "") + ">" +
+      '<button type="button" class="course-level-pick" data-act="course-level" data-id="phonics" aria-pressed="' + (phonicsOn ? "true" : "false") + '"><span>音标入门</span></button>' +
+      courseCurrentBadge(phonicsOn) +
+      '<p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div></article>';
     let blocks = "";
     let empty = '<p class="muted">这一档没有符合条件的课时。</p>';
     if (level === "phonics") {
@@ -3349,10 +3380,12 @@
     if (act === "course-level" || act === "course-pick") {
       const pick = button.dataset.id || "";
       if (pick === "phonics" || pick === "grammar" || BOOKS.some(function (book) { return book.id === pick; })) {
+        const prev = courseTrackId();
         UI.courseLevel = pick;
         local.courseLevel = pick;
         UI.courseUnit = "";
         saveLocal();
+        if (pick !== prev) toast("已设为当前课程：" + courseTrackTitle(pick));
         if (pick === "phonics" && !window.PHONICS) {
           loadPhonics().then(function (ok) { if (ok) draw(); });
         } else if (pick === "grammar") {
