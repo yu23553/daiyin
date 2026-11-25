@@ -408,12 +408,10 @@
       return '<article class="ph-lesson"><p class="ph-lesson-name">' + title + '</p><button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + item[0] + '">开始学习</button></article>';
     }).join("");
     const report = bag.report ? '<button type="button" class="btn" data-act="phonics-open" data-id="report">查看最近一次自测</button>' : "";
-    return '<div class="page"><div class="ph-head"><h1>音标入门</h1><p class="ph-progress">已完成：' + doneCount + " / 5</p></div>" +
-      '<p class="muted ph-lead">按第一课到第五课顺序解锁学习。</p>' +
-      '<p class="muted">符号与词卡上的 Paiboon+ 相同：无标记为中平，à 为低调，â 为降调，á 为高调，ǎ 为升调。</p>' +
+    return '<div class="page"><div class="ph-head"><h1>音标入门</h1><p class="ph-progress">' + doneCount + " / 5</p></div>" +
       '<div class="ph-lessons">' + rows + "</div>" +
-      '<div class="ph-actions"><button type="button" class="btn" data-act="phonics-open" data-id="review">复习音标错题</button>' + report + "</div>" +
-      '<section class="card ph-letters"><h2>泰文字母（可选）</h2><p class="muted">书写学习不属于主线五课；阅读背词卡片请以 Paiboon+ 注音为准。</p><button type="button" class="btn" data-act="phonics-open" data-id="letters">打开字母页</button></section></div>';
+      '<div class="ph-actions"><button type="button" class="btn" data-act="phonics-open" data-id="review">错题</button>' + report +
+      '<button type="button" class="btn" data-act="phonics-open" data-id="letters">字母</button></div></div>';
   }
 
   function toneSetKind(letter) {
@@ -425,11 +423,11 @@
   }
 
   const TONE_SECTION_META = [
-    { title: "日常动作", tip: "先听清本节词的五个声调，再测。มา / ไป / กิน 等会在测验里反复出现。" },
-    { title: "人物身体", tip: "爸爸、妈妈、头、耳… 升降调容易混，先跟读再测。" },
-    { title: "事物数量", tip: "车、碗、多少、贵便宜… 以本节词为主，并掺少量新词。" },
-    { title: "时间自然", tip: "天、月、风、雨… 先熟悉本节注音，再做听辨。" },
-    { title: "情感寒暄", tip: "喜欢、谢谢、你好… 学完本节例词再测；五节都通过后完成本课。" }
+    { title: "日常动作", tip: "" },
+    { title: "人物身体", tip: "" },
+    { title: "事物数量", tip: "" },
+    { title: "时间自然", tip: "" },
+    { title: "情感寒暄", tip: "" }
   ];
 
   function toneStudyWords(setIndex) {
@@ -504,8 +502,8 @@
 
   function tonePage(ui, bag) {
     const cards = TONES.map(function (tone) {
-      return '<article class="card ph-card"><p class="pos">' + esc(TONE_NAME[tone.id]) + '</p><p class="roman">' + esc(TONE_MARK[tone.id]) + '</p><p class="th" lang="th">' + esc(tone.thai) + " " + esc(tone.roman) + "</p><p>" + esc(tone.zh) + "</p><p class=\"hint\">" + esc(tone.memo) + "</p>" +
-        '<div class="row" style="margin-top:10px">' + playButtons(tone.thai) + "</div>" + ipaFold(TONE_IPA[tone.id]) + "</article>";
+      return '<article class="card ph-card tight"><p class="pos">' + esc(TONE_NAME[tone.id]) + '</p><p class="roman">' + esc(TONE_MARK[tone.id]) + '</p><p class="th" lang="th">' + esc(tone.thai) + " " + esc(tone.roman) + "</p><p>" + esc(tone.zh) + "</p>" +
+        '<div class="row" style="margin-top:8px">' + playButtons(tone.thai) + "</div></article>";
     }).join("");
     const passed = (bag && bag.passed) || {};
     const lock = '<svg class="lock-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
@@ -514,19 +512,17 @@
       const meta = TONE_SECTION_META[index] || { title: "第 " + (index + 1) + " 节", tip: "" };
       const done = !!passed[kind];
       const opened = openLesson(kind, bag);
-      const title = "第 " + (index + 1) + " 节 · " + esc(meta.title) + (done ? " · 已测" : "");
+      const title = (index + 1) + ". " + esc(meta.title) + (done ? " ✓" : "");
       if (!opened) {
         return '<article class="ph-lesson is-locked"><p class="ph-lesson-name">' + lock + title +
-          '</p><p class="muted">请先完成第 ' + index + " 节。</p>" +
-          '<button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">未解锁</button></article>';
+          '</p><button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">锁定</button></article>';
       }
-      return '<article class="ph-lesson"><p class="ph-lesson-name">' + title + '</p><p class="muted">' + esc(meta.tip) + '</p>' +
-        '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">进入本节</button></article>';
+      return '<article class="ph-lesson"><p class="ph-lesson-name">' + title + '</p>' +
+        '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">开始</button></article>';
     }).join("");
-    return '<div class="page"><p class="muted" style="margin-top:12px">第一课</p><h1>5 个声调</h1>' +
-      '<p class="hint">ม้า máa 是高平，หมา mǎa 是低升。符号标在元音的第一个字母上。本课分 5 小节，按序学习。每节一次学一个词，学完再测；中途退出进度保留。完成上一节（≥80%）解锁下一节；五节都通过后完成本课。</p>' +
-      '<div class="grid" style="margin-top:14px">' + cards + "</div>" +
-      '<div class="ph-lessons" style="margin-top:16px">' + sections + "</div></div>";
+    return '<div class="page"><p class="muted" style="margin-top:8px">第一课</p><h1>5 个声调</h1>' +
+      '<div class="grid" style="margin-top:12px">' + cards + "</div>" +
+      '<div class="ph-lessons" style="margin-top:12px">' + sections + "</div></div>";
   }
 
   function toneSectionPage(ui, bag, kind) {
@@ -552,20 +548,19 @@
     // 测验进行中或刚结束：一次一题，进度已持久化
     if (quiz) {
       return head +
-        '<section style="margin-top:16px"><h2>本节测试</h2><p class="hint">一次一题，中途退出后再进可续答。正确率 ≥80% 记打卡并解锁下一节。</p>' +
-        '<div style="margin-top:12px">' + drillHtml(quiz) + "</div></section>" + backRow + "</div>";
+        '<section style="margin-top:12px"><h2>测验</h2>' +
+        '<div style="margin-top:10px">' + drillHtml(quiz) + "</div></section>" + backRow + "</div>";
     }
 
     // 学完：可选测验 / 再学 / 返回
     if (prog.studyDone) {
-      const quizLabel = sectionPassed ? "再测一次（约 30 题）" : "进入测验（约 30 题）";
+      const quizLabel = sectionPassed ? "再测" : "测验";
       return head +
-        '<section class="card" style="margin-top:16px"><h2>本节词已学完</h2>' +
-        '<p class="hint">共 ' + words.length + " 个词。可进入测验，或再学一遍。进度已保存。</p>" +
-        (sectionPassed ? '<p class="muted">本节测验已通过。</p>' : "") +
-        '<div class="row" style="margin-top:12px;flex-wrap:wrap;gap:8px">' +
+        '<section class="card tight" style="margin-top:12px"><h2>学完 · ' + words.length + " 词</h2>" +
+        (sectionPassed ? '<p class="muted">已通过</p>' : "") +
+        '<div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px">' +
         '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + kind + '">' + quizLabel + "</button>" +
-        '<button type="button" class="btn" data-act="phonics-study-reset" data-id="' + kind + '">再学一遍</button>' +
+        '<button type="button" class="btn" data-act="phonics-study-reset" data-id="' + kind + '">再学</button>' +
         "</div></section>" + backRow + "</div>";
     }
 
@@ -602,26 +597,26 @@
     }).join("");
     const cards = CONS.filter(function (item) { return item.batch === batch; }).map(function (item) {
       const word = exampleFor(item.id);
-      const ex = word ? '<p class="hint">A1 例词：<span lang="th">' + esc(word.thai) + "</span> " + esc(word.roman) + " " + esc(word.zh) + "</p>" : '<p class="hint">本批先记这个写法。</p>';
+      const ex = word ? '<p class="muted"><span lang="th">' + esc(word.thai) + "</span> " + esc(word.zh) + "</p>" : "";
       const letter = ui.showLetter ? '<p class="thai-xl" lang="th" style="font-size:56px">' + esc(item.th) + "</p>" : "";
       const label = item.label || item.pb || "零声母";
-      return '<article class="card ph-card"><p class="pos">' + esc(names[item.batch]) + '</p><p class="roman">' + esc(label) + "</p>" + letter +
-        '<button type="button" class="btn" data-act="phonics-toggle-letter">' + (ui.showLetter ? "收起泰文字母" : "显示泰文字母") + "</button>" +
-        (item.alt ? '<p class="hint">' + esc(item.alt) + "</p>" : "") + ex +
-        (word ? '<div class="row" style="margin-top:10px">' + playButtons(word.thai) + "</div>" : "") +
-        ipaFold(item.ipa) + "</article>";
+      return '<article class="card ph-card tight"><p class="pos">' + esc(names[item.batch]) + '</p><p class="roman">' + esc(label) + "</p>" + letter +
+        '<button type="button" class="btn" data-act="phonics-toggle-letter">' + (ui.showLetter ? "收起字母" : "字母") + "</button>" +
+        ex +
+        (word ? '<div class="row" style="margin-top:8px">' + playButtons(word.thai) + "</div>" : "") +
+        "</article>";
     }).join("");
     const drillId = "l2" + batch;
-    const drill = ui.quiz && ui.quiz.kind === drillId ? drillHtml(ui.quiz) : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + drillId + '">听音匹配声母</button>';
-    return '<div class="page"><p class="muted" style="margin-top:12px">第二课</p><h1>21 个声母</h1><p class="hint">先完成中辅音，再打开高辅音，最后打开低辅音。主线看 Paiboon 写法。</p><div class="row" style="margin-top:12px">' + tabs + '</div><div class="grid" style="margin-top:14px">' + cards + "</div><div style=\"margin-top:16px\">" + drill + "</div></div>";
+    const drill = ui.quiz && ui.quiz.kind === drillId ? drillHtml(ui.quiz) : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="' + drillId + '">测验</button>';
+    return '<div class="page"><p class="muted" style="margin-top:8px">第二课</p><h1>21 个声母</h1><div class="row" style="margin-top:10px">' + tabs + '</div><div class="grid" style="margin-top:12px">' + cards + "</div><div style=\"margin-top:12px\">" + drill + "</div></div>";
   }
 
   function vowelPage(ui) {
     const cards = VOWELS.map(function (item) {
-      return '<article class="card ph-card"><p class="pos">短 / 长</p><p class="roman">' + esc(item.short) + " · " + esc(item.long) + '</p><div class="row"><div><p class="th" lang="th">' + esc(item.shortThai) + "</p><p class=\"ipa\">" + esc(item.shortRo) + "</p><p>" + esc(item.shortZh) + '</p><div class="row">' + playButtons(item.shortThai) + '</div></div><div><p class="th" lang="th">' + esc(item.longThai) + "</p><p class=\"ipa\">" + esc(item.longRo) + "</p><p>" + esc(item.longZh) + '</p><div class="row">' + playButtons(item.longThai) + "</div></div></div><p class=\"hint\">长音在 Paiboon 里把元音字母写两遍。</p>" + ipaFold(item.ipa) + "</article>";
+      return '<article class="card ph-card tight"><p class="pos">短 / 长</p><p class="roman">' + esc(item.short) + " · " + esc(item.long) + '</p><div class="row"><div><p class="th" lang="th">' + esc(item.shortThai) + "</p><p class=\"ipa\">" + esc(item.shortRo) + "</p><p>" + esc(item.shortZh) + '</p><div class="row">' + playButtons(item.shortThai) + '</div></div><div><p class="th" lang="th">' + esc(item.longThai) + "</p><p class=\"ipa\">" + esc(item.longRo) + "</p><p>" + esc(item.longZh) + '</p><div class="row">' + playButtons(item.longThai) + "</div></div></div></article>";
     }).join("");
-    const drill = ui.quiz && ui.quiz.kind === "l3" ? drillHtml(ui.quiz) : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="l3">听音分辨长短</button>';
-    return '<div class="page"><p class="muted" style="margin-top:12px">第三课</p><h1>长短元音</h1><p class="hint">长短可以区分词义。先听一对，再做练习。</p><div class="grid" style="margin-top:14px">' + cards + "</div><div style=\"margin-top:16px\">" + drill + "</div></div>";
+    const drill = ui.quiz && ui.quiz.kind === "l3" ? drillHtml(ui.quiz) : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="l3">测验</button>';
+    return '<div class="page"><p class="muted" style="margin-top:8px">第三课</p><h1>长短元音</h1><div class="grid" style="margin-top:12px">' + cards + "</div><div style=\"margin-top:12px\">" + drill + "</div></div>";
   }
 
   function builder(ui) {
@@ -641,17 +636,17 @@
     const result = made.ok
       ? '<p class="thai-xl" lang="th" style="font-size:64px">' + esc(made.thai) + '</p><p class="roman">' + esc(made.roman) + '</p><div class="row">' + playButtons(made.thai) + "</div>"
       : '<p class="roman">' + esc((cons.pb || "") + applyTone(build.vowel, build.tone)) + '</p><p class="hint">' + esc(made.reason) + "</p>";
-    return '<section class="card"><h2>拼一个音节</h2><p class="hint">选择声母、长元音和声调。写得出来的音节可以听。</p><p class="muted" style="margin-top:10px">声母</p><div class="row" style="flex-wrap:wrap">' + onsetChips + '</div><p class="muted">元音</p><div class="row" style="flex-wrap:wrap">' + vowelChips + '</div><p class="muted">声调</p><div class="row" style="flex-wrap:wrap">' + toneChips + "</div><div style=\"margin-top:12px\">" + result + "</div></section>";
+    return '<section class="card tight"><h2>拼读</h2><p class="muted" style="margin-top:8px">声母</p><div class="row" style="flex-wrap:wrap">' + onsetChips + '</div><p class="muted">元音</p><div class="row" style="flex-wrap:wrap">' + vowelChips + '</div><p class="muted">声调</p><div class="row" style="flex-wrap:wrap">' + toneChips + "</div><div style=\"margin-top:10px\">" + result + "</div></section>";
   }
 
   function deckCard(ui) {
     const deck = ui.deck || [];
     if (!deck.length) return "";
-    if (ui.deckDone) return '<section class="card"><h2>本课音节已读完</h2><p class="muted">第四课可以记为完成。</p><button type="button" class="btn btn-primary" data-act="phonics-pass" data-id="l4">完成本课</button></section>';
+    if (ui.deckDone) return '<section class="card tight"><h2>本课完成</h2><button type="button" class="btn btn-primary" data-act="phonics-pass" data-id="l4">完成</button></section>';
     const card = deck[ui.index] || deck[0];
-    const faceFront = '<div class="face face-front"><p class="roman" style="font-size:40px">' + esc(card.syl) + '</p><span class="badge">Paiboon+</span><p class="hint">点击卡片听发音、看释义</p></div>';
-    const faceBack = '<div class="face face-back"><p class="zh-lg">' + esc(card.zh) + '</p><p class="th" lang="th">' + esc(card.thai) + '</p><p class="ipa">' + esc(card.roman) + '</p><p class="hint">整词发音</p><div class="row">' + playButtons(card.thai) + '</div><p class="hint flip-hint">点击卡片收回</p></div>';
-    return '<p class="day-progress">音节 ' + (ui.index + 1) + " / " + deck.length + '</p><div class="flip' + (ui.flipped ? " is-back" : "") + '" data-act="phonics-flip"><div class="flip-inner">' + faceFront + faceBack + '</div></div><div class="actions"><button type="button" class="btn btn-primary" data-act="phonics-next">下一张</button></div>';
+    const faceFront = '<div class="face face-front"><p class="roman" style="font-size:40px">' + esc(card.syl) + "</p></div>";
+    const faceBack = '<div class="face face-back"><p class="zh-lg">' + esc(card.zh) + '</p><p class="th" lang="th">' + esc(card.thai) + '</p><p class="ipa">' + esc(card.roman) + '</p><div class="row">' + playButtons(card.thai) + "</div></div>";
+    return '<p class="day-progress">' + (ui.index + 1) + " / " + deck.length + '</p><div class="flip' + (ui.flipped ? " is-back" : "") + '" data-act="phonics-flip"><div class="flip-inner">' + faceFront + faceBack + '</div></div><div class="actions"><button type="button" class="btn btn-primary" data-act="phonics-next">下一张</button></div>';
   }
 
   function readPage(ui) {
@@ -677,7 +672,7 @@
       return '<article class="card"><p class="thai-xl" lang="th" style="font-size:48px">' + esc(item.th) + '</p><p class="roman">' + esc(item.pb || "零声母") + '</p><p class="hint">' + esc(item.cls === "mid" ? "中辅音" : item.cls === "high" ? "高辅音" : "低辅音") + "</p>" +
         (word ? '<p class="hint"><span lang="th">' + esc(word.thai) + "</span> " + esc(word.zh) + "</p>" + playButtons(word.thai) : "") + "</article>";
     }).join("");
-    return '<div class="page"><h1>泰文字母</h1><p class="hint">本页不计入五课进度，也不发放成就。词卡认读仍看 Paiboon+。</p><div class="grid" style="margin-top:14px">' + cards + "</div></div>";
+    return '<div class="page"><h1>泰文字母</h1><div class="grid" style="margin-top:12px">' + cards + "</div></div>";
   }
 
   function drillHtml(quiz) {
@@ -828,7 +823,7 @@
 
   function examPage(ui) {
     const body = ui.quiz && ui.quiz.kind === "l5" ? drillHtml(ui.quiz) : '<button type="button" class="btn btn-primary" data-act="phonics-drill" data-id="l5">开始综合自测</button>';
-    return '<div class="page"><p class="muted" style="margin-top:12px">第五课</p><h1>综合拼读自测</h1><p class="hint">题型包括听音选 Paiboon、判断声调和分辨长短元音。错题进入单独的复习卡。</p><div style="margin-top:14px">' + body + "</div></div>";
+    return '<div class="page"><p class="muted" style="margin-top:8px">第五课</p><h1>综合自测</h1><div style="margin-top:12px">' + body + "</div></div>";
   }
 
   function reviewPage(ui, bag) {

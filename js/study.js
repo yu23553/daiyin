@@ -414,11 +414,11 @@
   }
 
   function phonicsBook() {
-    return { id: "phonics", level: "音标", topic: "音标", title: "音标入门", desc: "声调｜声母｜元音｜拼读。可选词本，不计入等级解锁。", levelId: "" };
+    return { id: "phonics", level: "音标", topic: "音标", title: "音标入门", desc: "声调｜声母｜元音｜拼读", levelId: "" };
   }
 
   function grammarBook() {
-    return { id: "grammar", level: "语法", topic: "语法", title: "语法学习", desc: "礼貌助词、否定、疑问、量词、体貌与常用句式。按主题顺序解锁。", levelId: "" };
+    return { id: "grammar", level: "语法", topic: "语法", title: "语法学习", desc: "常用句式与助词", levelId: "" };
   }
 
   function courseTrackTitle(id) {
@@ -1345,20 +1345,20 @@
     const paused = savedSession(current.id);
     const roundBar = paused ? '<p class="progress-label">本轮已背 ' + paused.index + " / " + paused.ids.length + '</p><div class="mini-track"><span style="width:' + Math.round(100 * paused.index / paused.ids.length) + '%"></span></div>' : "";
     const progressName = current.id === "phonics" ? "已完成 " : "已掌握 ";
-    const word = '<button type="button" class="book-jump" data-act="book-open" data-id="' + esc(current.id) + '">' + esc(current.title) + '</button><p class="desc">' + esc(current.desc || "") + '</p><p class="progress-label">' + progressName + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
+    const word = '<button type="button" class="book-jump" data-act="book-open" data-id="' + esc(current.id) + '">' + esc(current.title) + '</button><p class="progress-label">' + progressName + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
       roundBar +
       '<div class="today-stats"><div><b>' + newCount + '</b><span>新词</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + due + '</b><span>复习</span></div></div>' +
-      '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始今天" : actionLabel(progress.status, current.id)) + "</button></div>";
+      '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始" : actionLabel(progress.status, current.id)) + "</button></div>";
     const slide = UI.homeSlide ? 1 : 0;
     const checked = Store.checkInTotal();
     const lit = Store.checkedInToday();
     return '<div class="page home-page">' +
       '<section class="home-hero" aria-label="RianThai">' +
       '<div class="home-mark" aria-hidden="true">ไ</div>' +
-      '<div><p class="home-brand">RianThai</p><p class="home-tag">把泰语听清，再说出口</p></div></section>' +
+      '<div><p class="home-brand">RianThai</p></div></section>' +
       '<button type="button" class="home-streak-row' + (lit ? " is-lit" : "") + '" data-act="go" data-view="stats" aria-label="查看统计">' + streakIcon() +
       '<div><p class="today-streak-label">累计打卡</p><p class="today-streak-num">' + checked + "<span>天</span></p></div></button>" +
-      '<section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
+      '<section class="today">' +
       '<div class="today-switch" role="tablist"><button type="button" class="today-tab' + (slide === 0 ? " is-on" : "") + '" data-act="home-slide" data-id="0">单词</button><button type="button" class="today-tab' + (slide === 1 ? " is-on" : "") + '" data-act="home-slide" data-id="1">课程</button></div>' +
       '<div class="today-track" data-home-track><div class="today-slide" data-act="book-open" data-id="' + esc(current.id) + '">' + word + '</div><div class="today-slide">' + homeCourseBlock() + "</div></div></section></div>";
   }
@@ -1405,15 +1405,15 @@
 
   function homeCourseBlock() {
     const book = courseBook();
-    const head = '<div class="today-course"><p class="eyebrow">当前课程</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button><p class="desc">' + esc(book.desc || "") + "</p>";
+    const head = '<div class="today-course"><p class="eyebrow">当前课程</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button>';
     if (book.id === "phonics") {
       const progress = bookProgress(book);
       const left = Math.max(0, progress.total - progress.mastered);
-      const label = progress.status === "done" ? "复习" : progress.status === "active" ? "继续" : "开始今天";
+      const label = progress.status === "done" ? "复习" : progress.status === "active" ? "继续" : "开始";
       return head +
-        '<p class="progress-label">已完成 ' + progress.mastered + " / " + progress.total + " 课</p>" +
+        '<p class="progress-label">' + progress.mastered + " / " + progress.total + "</p>" +
         '<div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
-        '<div class="today-stats"><div><b>' + (left || progress.total) + '</b><span>今日课时</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>5</b><span>声调</span></div></div>' +
+        '<div class="today-stats"><div><b>' + (left || progress.total) + '</b><span>剩余</span></div></div>' +
         '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="course-today">' + label + "</button></div></div>";
     }
     const pack = coursePack(book.id);
@@ -1422,11 +1422,11 @@
     const todayLessons = Math.min(per, pack.pending.length || pack.total);
     const todayWords = locked ? 0 : courseWordsFor(pack, todayLessons);
     const width = pack.total ? Math.round(100 * pack.done / pack.total) : 0;
-    const label = locked ? "未解锁" : (pack.pending.length ? "开始今天" : "复习");
+    const label = locked ? "未解锁" : (pack.pending.length ? "开始" : "复习");
     return head +
-      (locked ? '<p class="progress-label">完成上一单元后解锁</p>' : '<p class="progress-label">已完成 ' + pack.done + " / " + pack.total + " 课</p>") +
+      (locked ? '<p class="progress-label">未解锁</p>' : '<p class="progress-label">' + pack.done + " / " + pack.total + "</p>") +
       '<div class="mini-track"><span style="width:' + (locked ? 0 : width) + '%"></span></div>' +
-      '<div class="today-stats"><div><b>' + (locked ? 0 : todayLessons) + '</b><span>今日课时</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayWords + '</b><span>生词</span></div></div>' +
+      '<div class="today-stats"><div><b>' + (locked ? 0 : todayLessons) + '</b><span>今日课</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayWords + '</b><span>生词</span></div></div>' +
       '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="' + (locked ? "course-locked" : "course-today") + '">' + label + "</button></div></div>";
   }
 
@@ -1464,11 +1464,10 @@
     const start = locked
       ? '<span class="state state-lock">' + courseLockIcon() + "未解锁</span>"
       : '<button type="button" class="btn btn-primary" data-act="course-today">' + (pack.pending.length ? "开始学习" : "复习") + "</button>";
-    return '<div class="page course-task has-course-bar"><h1>' + esc(book.title) + '</h1><p class="desc">' + esc(book.desc || "") + '</p><p class="progress-label">已完成 ' + pack.done + " / " + pack.total + " 课 · 生词 " + pack.words + ' 个</p><div class="mini-track"><span style="width:' + width + '%"></span></div>' +
-      (locked ? '<p class="hint">完成上一单元后解锁</p>' : "") +
-      '<div class="row" style="margin-top:16px">' + start + "</div>" +
-      '<section class="card" style="margin-top:16px"><h2>目录</h2><p class="hint">按话题分成单元。点开单元后，再看里面的课。</p><div class="course-list">' + (rows || '<p class="muted">这一级还没有课时。</p>') + "</div></section>" +
-      '<section class="card" style="margin-top:16px"><h2>每日任务量</h2><p class="hint">上下滚动选择。天数按尚未学完的课时计算，生词数取今天要学的课。</p>' + courseWheel(pack) + "</section></div>" +
+    return '<div class="page course-task has-course-bar"><h1>' + esc(book.title) + '</h1><p class="progress-label">' + pack.done + " / " + pack.total + " · " + pack.words + ' 词</p><div class="mini-track"><span style="width:' + width + '%"></span></div>' +
+      '<div class="row" style="margin-top:12px">' + start + "</div>" +
+      '<section class="card tight" style="margin-top:14px"><h2>目录</h2><div class="course-list">' + (rows || '<p class="muted">暂无课时</p>') + "</div></section>" +
+      '<section class="card tight" style="margin-top:12px"><h2>每日课量</h2>' + courseWheel(pack) + "</section></div>" +
       coursePickBar(book);
   }
 
@@ -1477,17 +1476,10 @@
   }
 
   function bookIntro(book) {
-    const named = {
-      A1: "本词本用于打基础。收录问候、数字、时间、家人、物品和日常动作。句子短，便于开口。掌握本词本全部单词后，A2 进阶才会解锁。",
-      A2: "本词本用于出门办事。收录出行、问路、租房、预约、采购、就医、天气和行程。须先掌握 A1 基础的全部单词。",
-      B1: "本词本用于说出自己的想法。收录喜好、感受、计划、经历和看法。须先掌握 A2 进阶的全部单词。",
-      B2: "本词本用于把一件事说清楚。收录说明、讨论、解释、商量，以及处理复杂情况。须先掌握 B1 提高的全部单词。"
-    };
-    if (named[book.id]) return named[book.id];
-    if (book.id === "phonics") return "本词本用于认读 Paiboon+。依次学习五个声调、声母、长短元音、音节拼读和综合自测。音标入门不计入等级解锁。";
-    if (book.wordIds) return "这是自己整理的词本。单词来自生词本中勾选的条目，可按每日任务量复习。";
-    if (book.scene) return "本词本收录 " + book.level + " 等级里「" + book.scene + "」这一场景的口语词。注音采用 Paiboon+。宜按每日任务量学习。";
-    return book.desc || "本词本按场景整理口语词，注音采用 Paiboon+。";
+    if (book.desc) return book.desc;
+    if (book.wordIds) return "自建词本";
+    if (book.scene) return book.scene;
+    return "";
   }
 
   function bookScenes(book) {
@@ -1607,8 +1599,7 @@
       else if (load && load.loading) stateLine = '<p class="progress-label">词库下载中 ' + load.ready + "/" + load.total + '</p><div class="mini-track"><span style="width:' + load.width + '%"></span></div>';
       else stateLine = '<p class="progress-label">点进后查看词本</p>';
     }
-    const countLabel = topics ? (topics + 1) + " 本 · 整本与话题词本" : "整本与话题词本";
-    const meta = '<p class="desc">' + esc(book.desc || "") + '</p><p class="series-meta">' + countLabel + "</p>";
+    const meta = '<p class="series-meta">' + (topics ? topics + 1 : 1) + " 本</p>";
     return '<article class="card book-card series-card' + (paint ? " is-cover" : "") + (locked ? " is-locked has-tip" : "") + '" data-act="series-open" data-id="' + esc(level) + '"' + (paint ? ' style="--cover:' + paint.bg + ";--cover-ink:" + paint.ink + '"' : "") + (locked ? ' data-tip="' + esc(lockTip(book)) + '"' : "") + '>' +
       '<div class="book-face"><h2><span class="cover-level">' + esc(level) + '</span><span class="cover-name">系列</span></h2>' + meta + stateLine + "</div></article>";
   }
@@ -1616,12 +1607,12 @@
   function customSeriesCard() {
     const count = (local.custom || []).length;
     return '<article class="card book-card series-card series-custom" data-act="series-open" data-id="custom">' +
-      '<div class="book-face"><h2><span class="cover-name">自建词本</span></h2>' +
-      '<p class="desc">自己整理的词本</p><p class="series-meta">' + count + " 本</p></div></article>";
+      '<div class="book-face"><h2><span class="cover-name">自建</span></h2>' +
+      '<p class="series-meta">' + count + " 本</p></div></article>";
   }
 
   function booksCreateCard() {
-    return '<article class="card book-create"><h2>新建词本</h2><p class="muted">从生词本勾选单词后，可放入自建词本。</p>' +
+    return '<article class="card book-create tight"><h2>新建词本</h2>' +
       '<div class="field"><input id="new-book" placeholder="词本名称" value="' + esc(UI.draftName) + '"></div>' +
       '<button type="button" class="btn btn-primary" data-act="create-book" style="margin-top:12px">创建</button></article>';
   }
@@ -1640,13 +1631,12 @@
           '<span class="th" lang="th">' + esc(word.thai) + '</span><span class="grow"><b>' + esc(word.zh) + "</b><span>" + esc(word.roman || "") + "</span></span><span class=\"muted\">" + esc(levelLabel(word.level) || word.level || "") + "</span></article>";
       }).join("");
       return '<div class="page"><div class="row"><h1>查词</h1></div>' + search +
-        '<p class="hint">' + (hits.length ? "找到 " + hits.length + " 个词" + (hits.length >= 40 ? "，已显示前 40 个" : "") + "。点喇叭可听读音。" : "没有找到这个词。可换泰语、中文或注音再查。") + (allLexReady() ? "" : "词库还在下载，结果可能不全。") + "</p>" +
+        (hits.length ? '<p class="muted">' + hits.length + (hits.length >= 40 ? "+" : "") + " 个结果</p>" : '<p class="muted">无结果</p>') +
         '<div class="list">' + rows + "</div></div>";
     }
 
     if (!UI.booksSeries) {
       return '<div class="page books-hub"><div class="row"><h1>词本</h1></div>' + search +
-        '<p class="hint">先选等级系列，再看整本与话题词本。</p>' +
         '<div class="grid books-grid series-grid">' + levelOrder().map(seriesCard).join("") + customSeriesCard() + "</div></div>";
     }
 
@@ -1660,9 +1650,7 @@
       const level = bookNeedLevel(book);
       if (level) kickLexUpTo(level);
     });
-    const head = BOOKS.filter(function (book) { return book.id === UI.booksSeries; })[0];
-    return '<div class="page"><div class="row"><h1>' + esc(UI.booksSeries) + ' 系列</h1></div>' + search +
-      (head ? '<p class="hint">' + esc(head.desc || "") + "</p>" : "") +
+    return '<div class="page"><div class="row"><h1>' + esc(UI.booksSeries) + '</h1></div>' + search +
       '<div class="grid books-grid">' + list.map(bookCard).join("") + "</div></div>";
   }
 
@@ -1688,34 +1676,32 @@
     const book = viewingBook();
     if (bookPending(book)) {
       kickLexUpTo(bookNeedLevel(book));
-      return '<div class="page"><h1>' + esc(book.title) + '</h1><p class="hint">词库下载中，请稍候。下载完成后会自动打开。</p>' +
-        '<div class="row" style="margin-top:14px"><button type="button" class="btn" data-act="book-open" data-id="' + esc(book.id) + '">重新加载</button></div></div>';
+      return '<div class="page"><h1>' + esc(book.title) + '</h1><p class="muted">下载中…</p>' +
+        '<div class="row" style="margin-top:12px"><button type="button" class="btn" data-act="book-open" data-id="' + esc(book.id) + '">重试</button></div></div>';
     }
     const progress = bookProgress(book);
     const paused = savedSession(book.id);
     const label = book.id === "phonics" ? "已完成 " : "已掌握 ";
-    const scenes = bookScenes(book);
-    const round = paused ? '<p class="progress-label">本轮已背 ' + paused.index + " / " + paused.ids.length + '</p><div class="mini-track"><span style="width:' + Math.round(100 * paused.index / paused.ids.length) + '%"></span></div>' : "";
+    const round = paused ? '<p class="progress-label">本轮 ' + paused.index + " / " + paused.ids.length + '</p><div class="mini-track"><span style="width:' + Math.round(100 * paused.index / paused.ids.length) + '%"></span></div>' : "";
     let table = "";
     let listTitle = "词表";
     if (book.id === "phonics") {
       listTitle = "课时";
       const bag = Store.phonics();
-      const lessons = [["l1", "第一课 · 5 个声调（5 小节）"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
+      const lessons = [["l1", "第一课 · 声调"], ["l2", "第二课 · 声母"], ["l3", "第三课 · 元音"], ["l4", "第四课 · 拼读"], ["l5", "第五课 · 自测"]];
       table = lessons.map(function (item) {
         const done = bag.passed && bag.passed[item[0]];
-        return '<article class="word-row"><span class="grow">' + esc(item[1]) + '</span><span class="muted">' + (done ? "已完成" : "未完成") + '</span><button type="button" class="btn btn-ghost" data-act="phonics-open" data-id="' + item[0] + '">学习</button></article>';
+        return '<article class="word-row"><span class="grow">' + esc(item[1]) + '</span><span class="muted">' + (done ? "完成" : "") + '</span><button type="button" class="btn btn-ghost" data-act="phonics-open" data-id="' + item[0] + '">学</button></article>';
       }).join("");
     }
-    const countName = book.id === "phonics" ? "课时" : "词数";
-    const facts = '<p class="book-facts"><span>等级 <b>' + esc(book.level || "词本") + "</b></span><span>" + countName + " <b>" + progress.total + "</b></span><span>" + label.trim() + " <b>" + progress.mastered + "</b></span>" +
-      (scenes.length ? "<span>场景 <b>" + esc(scenes.join("、")) + "</b></span>" : "") + "</p>";
+    const intro = bookIntro(book);
     const start = progress.locked
-      ? '<p class="hint">' + esc(lockTip(book)) + "</p>"
-      : '<div class="row" style="margin-top:16px"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(book.id) + '">' + (actionLabel(progress.status, book.id) === "学习" ? "开始学习" : actionLabel(progress.status, book.id)) + "</button></div>";
-    const wheel = book.id === "phonics" ? "" : '<section class="card" style="margin-top:16px"><h2>每日任务量</h2><p class="hint">上下滚动选择。天数按尚未掌握的内容，除以每天的新词数量。</p>' + wheelHtml(book) + "</section>";
-    const chart = book.id === "phonics" ? '<section class="card" style="margin-top:16px"><h2>' + listTitle + " · " + progress.total + '</h2><div class="lex-list">' + (table || '<p class="muted">这本词书还没有词。</p>') + "</div></section>" : progressBody(book);
-    return '<div class="page book-page"><p class="muted">' + esc(book.topic || "词本") + "</p><h1>" + esc(book.title) + "</h1><p class=\"hint\">" + esc(bookIntro(book)) + "</p>" + facts +
+      ? '<p class="muted">' + esc(lockTip(book)) + "</p>"
+      : '<div class="row" style="margin-top:12px"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(book.id) + '">' + (actionLabel(progress.status, book.id) === "学习" ? "开始" : actionLabel(progress.status, book.id)) + "</button></div>";
+    const wheel = book.id === "phonics" ? "" : '<section class="card tight" style="margin-top:14px"><h2>每日词量</h2>' + wheelHtml(book) + "</section>";
+    const chart = book.id === "phonics" ? '<section class="card tight" style="margin-top:14px"><h2>' + listTitle + '</h2><div class="lex-list">' + (table || '<p class="muted">暂无</p>') + "</div></section>" : progressBody(book);
+    return '<div class="page book-page"><h1>' + esc(book.title) + "</h1>" +
+      (intro ? '<p class="muted book-intro">' + esc(intro) + "</p>" : "") +
       '<p class="progress-label">' + label + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
       round + start +
       chart +
@@ -1774,8 +1760,7 @@
     const legend = slices.map(function (item) {
       return '<button type="button" class="ring-jump" data-act="bucket" data-id="' + item.id + '"><span><i class="dot" style="background:' + item.color + '"></i>' + item.name + " · " + item.n + '</span><span class="chev" aria-hidden="true">&gt;</span></button>';
     }).join("");
-    return '<p class="hint">连续三次都选择认识，记为完全掌握，之后不再安排复习。中途选择不认识，则重新计数。</p>' +
-      '<section class="card ring-box"><div class="ring-wrap">' + ringSvg(slices, total) + '<div class="ring-label"><b>' + pct + '%</b><span>完全掌握</span></div></div><div class="ring-legend">' + legend + "</div></section>";
+    return '<section class="card ring-box tight"><div class="ring-wrap">' + ringSvg(slices, total) + '<div class="ring-label"><b>' + pct + '%</b><span>掌握</span></div></div><div class="ring-legend">' + legend + "</div></section>";
   }
 
   function wordListPage() {
@@ -1953,40 +1938,33 @@
         '<button type="button" class="btn btn-ghost say-play" data-act="speak" data-gender="' + gender + '" data-thai="' + encodeURIComponent(line.thai) + '">▶ 听这句</button></div>';
     }).join("");
     return '<div class="stage">' + head + '<div class="flip' + (UI.flipped ? " is-back" : "") + '" data-act="flip" role="button" tabindex="0" aria-label="翻转卡片"><div class="flip-inner">' +
-      '<div class="face face-front"><p class="thai-xl" lang="th">' + esc(word.thai) + '</p><p class="roman">' + romanBits(word.roman, word.thai) + '</p><span class="badge">Paiboon+</span>' +
-      '<p class="hint">点击卡片看释义</p></div>' +
+      '<div class="face face-front"><p class="thai-xl" lang="th">' + esc(word.thai) + '</p><p class="roman">' + romanBits(word.roman, word.thai) + '</p></div>' +
       '<div class="face face-back">' + tags +
       '<p class="zh-lg">' + esc(word.zh) + "</p>" +
       '<div class="say-list">' + examples + "</div>" +
-      (word.tip ? '<p class="hint say-tip">' + esc(word.tip) + "</p>" : "") +
-      (note ? '<p class="hint">笔记：' + esc(note) + "</p>" : "") +
-      '<p class="hint flip-hint">点击卡片收回</p></div></div></div>' +
+      (note ? '<p class="muted">笔记：' + esc(note) + "</p>" : "") +
+      "</div></div></div>" +
       '<div class="actions"><button type="button" class="btn btn-primary" data-act="known">认识</button>' +
       '<button type="button" class="btn btn-warn" data-act="unknown">不认识</button>' +
-      '<button type="button" class="btn has-tip" data-act="star" data-id="' + esc(word.id) + '" data-tip="加入生词本，后续可以单独复习这些单词">' + (starred ? "已在生词本" : "加入生词本") + "</button>" +
-      '<button type="button" class="btn btn-ghost has-tip" data-act="note" data-tip="为本词添加个人学习笔记">笔记</button></div></div>' +
-      (UI.noteOpen ? '<div class="modal-back"><form class="card modal" data-note-form><h2>笔记</h2><div class="field"><textarea id="note-text" rows="4" placeholder="写下自己的提醒">' + esc(note) + '</textarea></div><div class="row" style="margin-top:12px"><button class="btn btn-primary" type="submit">保存</button><button type="button" class="btn" data-act="close-note">取消</button></div></form></div>' : "");
+      '<button type="button" class="btn" data-act="star" data-id="' + esc(word.id) + '">' + (starred ? "已收藏" : "收藏") + "</button>" +
+      '<button type="button" class="btn btn-ghost" data-act="note">笔记</button></div></div>' +
+      (UI.noteOpen ? '<div class="modal-back"><form class="card modal" data-note-form><h2>笔记</h2><div class="field"><textarea id="note-text" rows="4" placeholder="笔记">' + esc(note) + '</textarea></div><div class="row" style="margin-top:12px"><button class="btn btn-primary" type="submit">保存</button><button type="button" class="btn" data-act="close-note">取消</button></div></form></div>' : "");
   }
 
   function summaryPage() {
     const log = dayLog();
-    const names = log.lessons.map(function (id) {
-      const lesson = findLesson(id);
-      return lesson ? lesson.title : "";
-    }).filter(Boolean);
     function cell(label, value) {
       return '<div><b>' + label + "</b><span>" + value + "</span></div>";
     }
     const minutes = Math.floor(studySeconds() / 60);
-    const time = studySeconds() > 0 && minutes < 1 ? "不到 1 分钟" : minutes + " 分钟";
-    return '<div class="page summary-page"><h1>今日小结</h1><p class="desc">今天的单词和课程已经记入。</p><div class="study-today">' +
-      cell("今日新词", String(log.newIds.length)) +
-      cell("今日复习", String(log.reviewIds.length)) +
-      cell("学习时间", time) +
-      cell("今日课程", log.lessons.length + " 课") +
+    const time = studySeconds() > 0 && minutes < 1 ? "<1 分" : minutes + " 分";
+    return '<div class="page summary-page"><h1>今日小结</h1><div class="study-today">' +
+      cell("新词", String(log.newIds.length)) +
+      cell("复习", String(log.reviewIds.length)) +
+      cell("时间", time) +
+      cell("课程", String(log.lessons.length)) +
       "</div>" +
-      (names.length ? '<p class="hint">已学课程：' + esc(names.join("、")) + "</p>" : '<p class="hint">今天还没有学完的课程。</p>') +
-      '<div class="row" style="margin-top:18px"><button type="button" class="btn btn-primary" data-act="go" data-view="home">回到首页</button></div></div>';
+      '<div class="row" style="margin-top:16px"><button type="button" class="btn btn-primary" data-act="go" data-view="home">完成</button></div></div>';
   }
 
   function notebookPage() {
@@ -2069,19 +2047,16 @@
       '<section class="set-panel set-account">' +
       '<div class="set-account-top"><div><p class="set-kicker">账号</p><h2>' + esc(session ? session.username : "未登录") + '</h2></div>' +
       '<span class="sync-pill is-' + syncTone + '">' + esc(Account.statusLabel()) + "</span></div>" +
-      '<p class="set-hint">云端进度托管在 ' + esc(Account.apiHost()) + '。站点在 Cloudflare Pages；未登录时进度只留在本机。</p>' +
-      '<div class="set-line"><span class="muted">词汇等级 · ' + esc(levelText) + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">去测评</button></div>' +
+      '<div class="set-line"><span class="muted">等级 · ' + esc(levelText) + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">测评</button></div>' +
       '<div class="set-actions set-actions-row">' + accountBtns + "</div></section>" +
       '<p class="set-label">外观与朗读</p>' +
       '<section class="set-panel">' +
       '<div class="set-row"><div><p class="set-item-title">深色模式</p><p class="muted">' + themeLabel() + '</p></div>' +
       '<label class="switch"><input type="checkbox" data-act="theme-toggle"' + (resolvedTheme() === "dark" ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
-      '<button type="button" class="text-btn set-inline-link" data-act="theme-system">改为跟随系统</button>' +
+      '<button type="button" class="text-btn set-inline-link" data-act="theme-system">跟随系统</button>' +
       '<div class="set-divider"></div>' +
-      '<div class="set-row"><div><p class="set-item-title">朗读引擎</p><p class="muted">' + esc(voice.label) + '</p></div>' +
+      '<div class="set-row"><div><p class="set-item-title">云端朗读</p><p class="muted">' + esc(voice.label) + '</p></div>' +
       '<label class="switch" title="优先云端"><input type="checkbox" data-act="tts-cloud"' + (local.preferCloudTts ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
-      '<p class="set-hint">开关打开则优先云端朗读；关闭时优先本机泰语语音，失败再自动兜底。</p>' +
-      (voice.tip ? '<p class="set-hint">' + esc(voice.tip) + "</p>" : "") +
       "</section>" +
       '<p class="set-label">学习</p>' +
       '<section class="set-panel set-list">' +
@@ -2089,30 +2064,29 @@
       '<button type="button" class="set-link" data-act="go" data-view="plan"><span>学习计划</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="notebook"><span>生词本</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="texts"><span>分级课文</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
-      '<button type="button" class="set-link" data-act="show-notes"><span>' + (UI.notesOpen ? "收起笔记" : "查看笔记") + '</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="set-link" data-act="show-notes"><span>' + (UI.notesOpen ? "收起笔记" : "笔记") + '</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       noteBody +
       "</section>" +
       '<p class="set-label">数据</p>' +
       '<section class="set-panel">' +
-      '<p class="set-hint">导出或恢复本机的学习进度、笔记和词本设置。</p>' +
-      '<div class="set-actions set-actions-row"><button type="button" class="btn" data-act="export-backup">导出备份</button><button type="button" class="btn" data-act="import-backup">导入恢复</button></div>' +
+      '<div class="set-actions set-actions-row"><button type="button" class="btn" data-act="export-backup">导出</button><button type="button" class="btn" data-act="import-backup">导入</button></div>' +
       '<input id="backup-file" type="file" accept="application/json,.json" data-act="import-file" hidden></section>' +
       '<p class="set-label">关于</p>' +
       '<section class="set-panel">' +
       '<p class="set-item-title">RianThai</p>' +
-      '<p class="set-hint">练习泰语听和说。词本 A1–B2，注音 Paiboon+；句尾礼貌词按说话人更换。版本 ' + esc(window.RT_VERSION || "dev") + "。</p>" +
+      '<p class="muted">v' + esc(window.RT_VERSION || "dev") + "</p>" +
       "</section></div>";
   }
 
   function authPage() {
     const login = UI.authMode === "login";
-    return '<div class="auth"><section class="auth-brand"><p class="auth-name">RianThai</p><h1>把泰语听清，再说出口</h1></section>' +
+    return '<div class="auth"><section class="auth-brand"><p class="auth-name">RianThai</p></section>' +
       '<form class="auth-form" data-auth-form><h2>' + (login ? "登录" : "注册") + '</h2><div class="field"><span>用户名</span><input id="acct-user" autocomplete="username"></div>' +
       '<div class="field"><span>密码</span><input id="acct-pass" type="password" autocomplete="' + (login ? "current-password" : "new-password") + '"></div>' +
       '<p class="form-error">' + esc(UI.authError) + "</p>" +
-      '<button class="btn btn-primary auth-btn" type="submit"' + (UI.authBusy ? " disabled" : "") + ">" + (login ? "登录" : "注册并测评") + "</button>" +
-      '<button type="button" class="btn auth-btn" data-act="auth-mode">' + (login ? "没有账号，去注册" : "已有账号，去登录") + "</button>" +
-      '<button type="button" class="text-btn" data-act="go" data-view="home">先不登录，直接学习</button></form></div>';
+      '<button class="btn btn-primary auth-btn" type="submit"' + (UI.authBusy ? " disabled" : "") + ">" + (login ? "登录" : "注册") + "</button>" +
+      '<button type="button" class="btn auth-btn" data-act="auth-mode">' + (login ? "注册" : "已有账号") + "</button>" +
+      '<button type="button" class="text-btn" data-act="go" data-view="home">跳过</button></form></div>';
   }
 
   function quizPage() {
@@ -2373,8 +2347,9 @@
       '<button type="button" class="btn" data-act="course-review" data-id="' + id + '"' + (reviewOn ? "" : " disabled") + ">复习</button>" +
       '<button type="button" class="btn" data-act="course-words" data-id="' + id + '">生词</button>' +
       '<button type="button" class="btn" data-act="course-notes" data-id="' + id + '">笔记</button>';
-    return '<article class="card course-item tone-' + String(lesson.level || "").toLowerCase() + '">' +
-      '<div class="course-item-main"><p class="course-state">' + lessonStateLabel(state) + "</p><h2>" + esc(lesson.title) + "</h2><p class=\"desc\">" + esc(lesson.aim || "") + '</p><p class="muted">本课 ' + (lesson.words || []).length + " 个生词，" + (lesson.lines || []).length + " 个句子</p></div>" +
+    return '<article class="card course-item tight tone-' + String(lesson.level || "").toLowerCase() + '">' +
+      '<div class="course-item-main"><p class="course-state">' + lessonStateLabel(state) + "</p><h2>" + esc(lesson.title) + "</h2>" +
+      ((lesson.words || []).length ? '<p class="muted">' + (lesson.words || []).length + " 词</p>" : "") + "</div>" +
       '<div class="course-item-actions">' + actions + "</div></article>";
   }
 
@@ -2461,7 +2436,7 @@
       courseCurrentBadge(phonicsOn) +
       '<p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div></article>';
     let blocks = "";
-    let empty = '<p class="muted">这一档没有符合条件的课时。</p>';
+    let empty = '<p class="muted">暂无课时</p>';
     if (level === "phonics") {
       const bag = Store.phonics();
       const p = bag.passed || {};
@@ -2487,18 +2462,18 @@
           '<span class="grow"><b>' + esc(item[1]) + '</b><small>' + esc(item[2]()) + "</small></span>" +
           '<span class="chev" aria-hidden="true">&gt;</span></button>';
       }).join("");
-      empty = '<p class="muted">音标入门共 5 课，按顺序学习。</p>';
+      empty = '<p class="muted">5 课</p>';
     } else if (level === "grammar") {
       kickLexUpTo("A1");
       const pending = !lexLevelsUpTo("A1").every(lexReady);
       blocks = pending ? "" : courseUnits("grammar").map(function (unit, index) { return unitRow(unit, index); }).join("");
-      empty = pending ? '<p class="muted">词库下载中，请稍候…</p>' : '<p class="muted">语法学习按主题顺序解锁。</p>';
+      empty = pending ? '<p class="muted">下载中…</p>' : '<p class="muted">暂无课时</p>';
     } else {
       const levelPending = !lexLevelsUpTo(level).every(lexReady);
       blocks = levelPending ? "" : courseUnits(level).map(function (unit, index) { return unitRow(unit, index); }).join("");
-      empty = levelPending ? '<p class="muted">词库下载中，请稍候…</p>' : empty;
+      empty = levelPending ? '<p class="muted">下载中…</p>' : empty;
     }
-    return '<div class="page course-page"><p class="course-lead">场景化泰语课程，搭配 Paiboon+ 音标，单词句子同步学习</p>' +
+    return '<div class="page course-page">' +
       '<div class="course-levels">' + phonicsCard + grammarCard + levels + "</div>" +
       (level === "phonics" || level === "grammar" ? "" : '<div class="course-filters">' + filters.map(function (name) {
         return '<button type="button" class="chip' + (UI.courseFilter === name ? " is-on" : "") + '" data-act="course-filter" data-id="' + name + '">' + name + "</button>";
@@ -2517,7 +2492,7 @@
     const rows = courseWordList(lesson).map(function (word) {
       return '<article class="word-row"><div class="grow"><p class="th" lang="th">' + esc(word.thai) + '</p><p class="ipa">' + esc(word.roman || "") + '</p><p class="muted">' + esc(word.zh) + "</p></div></article>";
     }).join("");
-    return '<div class="page course-page"><p class="muted">' + esc(lesson.title) + '</p><h1>本课生词</h1><p class="hint">这些词已加入生词本，可在设置中的生词本里继续复习。</p><div class="list" style="margin-top:14px">' + (rows || '<p class="muted">本课还没有生词。</p>') + "</div></div>";
+    return '<div class="page course-page"><p class="muted">' + esc(lesson.title) + '</p><h1>本课生词</h1><div class="list" style="margin-top:12px">' + (rows || '<p class="muted">暂无</p>') + "</div></div>";
   }
 
   function courseNotesPage(lesson) {
