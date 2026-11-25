@@ -402,7 +402,6 @@
     const doneCount = steps.filter(function (id) { return bag.passed && bag.passed[id]; }).length;
     const quota = Math.max(1, Math.min(5, Number(ui.dailyPhonics) || 1));
     const todayDone = Math.max(0, Number(ui.phonicsToday) || 0);
-    const wheel = ui.phonicsWheel || "";
     const lock = '<svg class="lock-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
     const rows = lessonMeta().map(function (item) {
       const on = openLesson(item[0], bag);
@@ -415,8 +414,7 @@
       '<p class="progress-label">今日 ' + todayDone + " / " + quota + " 课</p>" +
       '<div class="ph-lessons">' + rows + "</div>" +
       '<div class="ph-actions"><button type="button" class="btn" data-act="phonics-open" data-id="review">错题</button>' + report +
-      '<button type="button" class="btn" data-act="phonics-open" data-id="letters">字母</button></div>' +
-      wheel + "</div>";
+      '<button type="button" class="btn" data-act="phonics-open" data-id="letters">字母</button></div></div>';
   }
 
   function toneSetKind(letter) {
@@ -506,28 +504,30 @@
   }
 
   function tonePage(ui, bag) {
-    const cards = TONES.map(function (tone) {
-      return '<article class="card ph-card tight"><p class="pos">' + esc(TONE_NAME[tone.id]) + '</p><p class="roman">' + esc(TONE_MARK[tone.id]) + '</p><p class="th" lang="th">' + esc(tone.thai) + " " + esc(tone.roman) + "</p><p>" + esc(tone.zh) + "</p>" +
-        '<div class="row" style="margin-top:8px">' + playButtons(tone.thai) + "</div></article>";
-    }).join("");
     const passed = (bag && bag.passed) || {};
     const lock = '<svg class="lock-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.2" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+    const doneCount = ["a", "b", "c", "d", "e"].filter(function (letter) { return !!passed[toneSetKind(letter)]; }).length;
     const sections = ["a", "b", "c", "d", "e"].map(function (letter, index) {
       const kind = toneSetKind(letter);
       const meta = TONE_SECTION_META[index] || { title: "第 " + (index + 1) + " 课", tip: "" };
       const done = !!passed[kind];
       const opened = openLesson(kind, bag);
-      const title = (index + 1) + ". " + esc(meta.title) + (done ? " ✓" : "");
+      const title = (index + 1) + ". " + esc(meta.title);
+      const state = done ? "✅ 已完成" : opened ? "🟡 学习中" : "🔒 未解锁";
       if (!opened) {
-        return '<article class="ph-lesson is-locked"><p class="ph-lesson-name">' + lock + title +
-          '</p><button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">锁定</button></article>';
+        return '<article class="card course-item tight tone-phonics is-locked">' +
+          '<div class="course-item-main"><p class="course-state">' + state + "</p><h2>" + lock + " " + title + "</h2></div>" +
+          '<div class="course-item-actions"><button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">锁定</button></div></article>';
       }
-      return '<article class="ph-lesson"><p class="ph-lesson-name">' + title + '</p>' +
-        '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">开始</button></article>';
+      return '<article class="card course-item tight tone-phonics">' +
+        '<div class="course-item-main"><p class="course-state">' + state + "</p><h2>" + title + "</h2></div>" +
+        '<div class="course-item-actions">' +
+        '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">学习</button>' +
+        '<button type="button" class="btn" data-act="phonics-drill" data-id="' + kind + '"' + (done ? "" : " disabled") + ">复习</button>" +
+        "</div></article>";
     }).join("");
-    return '<div class="page"><p class="muted" style="margin-top:8px">第一单元</p><h1>5 个声调</h1>' +
-      '<div class="grid" style="margin-top:12px">' + cards + "</div>" +
-      '<div class="ph-lessons" style="margin-top:12px">' + sections + "</div></div>";
+    return '<div class="page course-page"><p class="muted" style="margin-top:8px">第一单元 · 已完成 ' + doneCount + " / 5 课</p>" +
+      '<div class="course-list" style="margin-top:12px">' + sections + "</div></div>";
   }
 
   function toneSectionPage(ui, bag, kind) {
