@@ -237,6 +237,32 @@
     state.streak.last = today;
   }
 
+  // 累计打卡：有过学习奖励 / 离线完成 / 已记入 streak 的不重复日期数。
+  function checkInTotal() {
+    const days = {};
+    Object.keys(state.awards || {}).forEach(function (key) {
+      const bag = state.awards[key];
+      if (bag && typeof bag === "object" && Object.keys(bag).length) days[key] = true;
+    });
+    Object.keys(state.offline || {}).forEach(function (key) {
+      const bag = state.offline[key];
+      if (!bag || typeof bag !== "object") return;
+      if (Object.keys(bag).some(function (id) { return !!bag[id]; })) days[key] = true;
+    });
+    if (state.streak && state.streak.last) days[state.streak.last] = true;
+    return Object.keys(days).length;
+  }
+
+  function checkedInToday() {
+    const today = dateKey();
+    if (state.streak && state.streak.last === today) return true;
+    const awards = state.awards && state.awards[today];
+    if (awards && typeof awards === "object" && Object.keys(awards).length) return true;
+    const offline = state.offline && state.offline[today];
+    if (offline && typeof offline === "object" && Object.keys(offline).some(function (id) { return !!offline[id]; })) return true;
+    return false;
+  }
+
   function award(key, xp) {
     const today = dateKey();
     state.awards[today] = state.awards[today] || {};
@@ -415,12 +441,17 @@
     if (!state.phonics || typeof state.phonics !== "object") state.phonics = {};
     if (!state.phonics.passed || typeof state.phonics.passed !== "object") state.phonics.passed = {};
     if (!state.phonics.srs || typeof state.phonics.srs !== "object") state.phonics.srs = {};
+    if (!state.phonics.section || typeof state.phonics.section !== "object") state.phonics.section = {};
     return state.phonics;
   }
 
   function phonicsPass(id) {
     const bag = phonicsBag();
     if (!bag.passed[id]) bag.passed[id] = dateKey();
+    // 第一单元五课都通过后记 l1 完成（与声母三批规则一致；已有 l1 的旧进度保留）
+    if (bag.passed.l1a && bag.passed.l1b && bag.passed.l1c && bag.passed.l1d && bag.passed.l1e && !bag.passed.l1) {
+      bag.passed.l1 = dateKey();
+    }
     if (bag.passed.l2a && bag.passed.l2b && bag.passed.l2c) bag.passed.l2 = dateKey();
     const steps = ["l1", "l2", "l3", "l4", "l5"];
     let fresh = false;
@@ -500,6 +531,8 @@
     agenda: agenda,
     isDone: isDone,
     award: award,
+    checkInTotal: checkInTotal,
+    checkedInToday: checkedInToday,
     grade: grade,
     dueWords: dueWords,
     card: function (id) { return state.srs[id] || null; },
