@@ -520,10 +520,13 @@
           '<div class="course-item-actions"><button type="button" class="btn" data-act="phonics-locked" data-id="' + kind + '">锁定</button></div></article>';
       }
       return '<article class="card course-item tight tone-phonics">' +
-        '<div class="course-item-main"><p class="course-state">' + state + "</p><h2>" + title + "</h2></div>" +
+        '<div class="course-item-main"><p class="course-state">' + state + "</p><h2>" + title + "</h2>" +
+        '<p class="muted">' + toneStudyWords(index).length + " 词</p></div>" +
         '<div class="course-item-actions">' +
         '<button type="button" class="btn btn-primary" data-act="phonics-open" data-id="' + kind + '">学习</button>' +
         '<button type="button" class="btn" data-act="phonics-drill" data-id="' + kind + '"' + (done ? "" : " disabled") + ">复习</button>" +
+        '<button type="button" class="btn" data-act="phonics-words" data-id="' + kind + '">生词</button>' +
+        '<button type="button" class="btn" data-act="phonics-notes" data-id="' + kind + '">笔记</button>' +
         "</div></article>";
     }).join("");
     return '<div class="page course-page"><p class="muted" style="margin-top:8px">第一单元 · 已完成 ' + doneCount + " / 5 课</p>" +
