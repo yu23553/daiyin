@@ -63,12 +63,17 @@
     local.lessonNotes = {};
     migrated = true;
   }
-  if (["A1", "A2", "B1", "B2"].indexOf(local.courseLevel) < 0) {
+  if (["A1", "A2", "B1", "B2", "grammar", "phonics"].indexOf(local.courseLevel) < 0) {
     local.courseLevel = "A1";
     migrated = true;
   }
-  if (!local.dailyLessons) {
+  // 各课程轨道每日课量：A1–B2 / 语法用 dailyLessons；音标用 dailyPhonics（均 1–5）。
+  if (!(Number(local.dailyLessons) >= 1 && Number(local.dailyLessons) <= 5)) {
     local.dailyLessons = 1;
+    migrated = true;
+  }
+  if (!(Number(local.dailyPhonics) >= 1 && Number(local.dailyPhonics) <= 5)) {
+    local.dailyPhonics = 1;
     migrated = true;
   }
   if (local.mode !== "card" && local.mode !== "hear-word" && local.mode !== "hear-sent") {
@@ -414,11 +419,28 @@
   }
 
   function phonicsBook() {
-    return { id: "phonics", level: "音标", topic: "音标", title: "音标入门", desc: "声调｜声母｜元音｜拼读。可选词本，不计入等级解锁。", levelId: "" };
+    return { id: "phonics", level: "音标", topic: "音标", title: "音标入门", desc: "声调｜声母｜元音｜拼读", levelId: "" };
+  }
+
+  function grammarBook() {
+    return { id: "grammar", level: "语法", topic: "语法", title: "语法学习", desc: "常用句式与助词", levelId: "" };
+  }
+
+  function courseTrackTitle(id) {
+    if (id === "phonics") return phonicsBook().title;
+    if (id === "grammar") return grammarBook().title;
+    const book = BOOKS.filter(function (item) { return item.id === id; })[0];
+    return book ? book.title : id;
+  }
+
+  function courseCurrentBadge(on) {
+    if (!on) return "";
+    return '<p class="course-current"><span class="course-current-check" aria-hidden="true">✓</span>当前课程</p>';
   }
 
   function bookById(id) {
     if (id === "phonics") return phonicsBook();
+    if (id === "grammar") return grammarBook();
     if (id === "star") return { id: "star", level: "生词", topic: "生词", title: "生词本", desc: "单独收藏的词" };
     const custom = (local.custom || []).filter(function (book) { return book.id === id; })[0];
     if (custom) return { id: custom.id, level: "自建", topic: "自建", title: custom.title, desc: "自己整理的词本", wordIds: custom.wordIds || [] };
@@ -472,6 +494,7 @@
     courseDone: false,
     homeSlide: 0,
     openBook: "",
+    booksSeries: "",
     bucket: "",
     courseUnit: "",
     lexQuery: "",
@@ -1012,7 +1035,8 @@
   }
 
   function atSectionRoot() {
-    if (UI.view === "home" || UI.view === "books" || UI.view === "profile") return true;
+    if (UI.view === "home" || UI.view === "profile") return true;
+    if (UI.view === "books" && !UI.booksSeries && !String(UI.lexQuery || "").trim()) return true;
     if (UI.view === "course" && !UI.lessonId && !UI.coursePane && !UI.courseUnit) return true;
     return false;
   }
@@ -1045,6 +1069,7 @@
     UI.coursePane = frame.pane || "";
     UI.courseFocus = frame.focus || "";
     UI.openBook = frame.open || "";
+    UI.booksSeries = frame.series || "";
     UI.bucket = frame.bucket || "";
     UI.courseUnit = frame.cu || "";
     navMotion = swiping ? "cut" : "back";
@@ -1101,6 +1126,7 @@
       pane: UI.coursePane || "",
       focus: UI.courseFocus || "",
       open: UI.openBook || "",
+      series: UI.booksSeries || "",
       bucket: UI.bucket || "",
       cu: UI.courseUnit || ""
     };
@@ -1108,9 +1134,46 @@
 
   function noteNav(before) {
     const now = snapshot();
-    if (now.view === before.view && now.bookId === before.bookId && now.lessonId === before.lessonId && now.ph === before.ph && now.unit === before.unit && now.pane === (before.pane || "") && now.focus === (before.focus || "") && (now.open || "") === (before.open || "") && (now.bucket || "") === (before.bucket || "") && (now.cu || "") === (before.cu || "")) return;
+    if (now.view === before.view && now.bookId === before.bookId && now.lessonId === before.lessonId && now.ph === before.ph && now.unit === before.unit && now.pane === (before.pane || "") && now.focus === (before.focus || "") && (now.open || "") === (before.open || "") && (now.series || "") === (before.series || "") && (now.bucket || "") === (before.bucket || "") && (now.cu || "") === (before.cu || "")) return;
     UI.nav.push(before);
     if (UI.nav.length > 40) UI.nav.shift();
+  }
+
+  // 音标可计「课」：单元内最小完成单元（声调 5 课、声母 3 批、后三单元各 1 课）。
+  const PHONICS_COURSE_IDS = ["l1a", "l1b", "l1c", "l1d", "l1e", "l2a", "l2b", "l2c", "l3", "l4", "l5"];
+
+  function dailyPhonicsGoal() {
+    const n = Number(local.dailyPhonics);
+    if (n >= 1 && n <= 5) return n;
+    return 1;
+  }
+
+  function phonicsCoursesDoneToday() {
+    const bag = Store.phonics();
+    const today = Store.dateKey();
+    const passed = bag.passed || {};
+    return PHONICS_COURSE_IDS.filter(function (id) { return passed[id] === today; }).length;
+  }
+
+  function phonicsCoursesPending() {
+    const bag = Store.phonics();
+    const passed = bag.passed || {};
+    return PHONICS_COURSE_IDS.filter(function (id) { return !passed[id]; });
+  }
+
+  function dailyCourseGoal() {
+    const n = Number(local.dailyLessons);
+    if (n >= 1 && n <= 5) return n;
+    return 1;
+  }
+
+  function phonicsWheelInner() {
+    const current = dailyPhonicsGoal();
+    const pending = phonicsCoursesPending().length;
+    return [1, 2, 3, 4, 5].map(function (count) {
+      const days = pending ? Math.ceil(pending / count) : 0;
+      return '<button type="button" class="wheel-item' + (count === current ? " is-on" : "") + '" data-act="wheel-pick" data-kind="phonics" data-lessons="' + count + '">每天 ' + count + " 课" + (days ? "，约 " + days + " 天" : "") + "</button>";
+    }).join("");
   }
 
   function loadOptions() {
@@ -1145,6 +1208,13 @@
         '<path d="M5 7h9.8a2.2 2.2 0 0 1 2.2 2.2v4.2a2.2 2.2 0 0 1-2.2 2.2H9.4L6.2 18.3V15.4H5A2.2 2.2 0 0 1 2.8 13.2V9.2A2.2 2.2 0 0 1 5 7z" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linejoin="round"/>' +
         '<path d="M6.6 10.2h7.2M6.6 12.6h4.8" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round"/></svg>';
     }
+    if (view === "stats") {
+      return svg +
+        '<rect x="4.2" y="13.2" width="3.2" height="6.6" rx="1" fill="currentColor" opacity=".16"/>' +
+        '<rect x="10.4" y="9.2" width="3.2" height="10.6" rx="1" fill="currentColor" opacity=".16"/>' +
+        '<rect x="16.6" y="5.8" width="3.2" height="14" rx="1" fill="currentColor" opacity=".16"/>' +
+        '<path d="M5.8 19.8V13.2M12 19.8V9.2M18.2 19.8V5.8" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round"/></svg>';
+    }
     return svg +
       '<circle cx="12" cy="8.1" r="3.15" fill="currentColor" opacity=".16"/>' +
       '<circle cx="12" cy="8.1" r="3.15" fill="none" stroke="currentColor" stroke-width="1.55"/>' +
@@ -1152,7 +1222,7 @@
   }
 
   function streakIcon() {
-    return '<span class="home-streak-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><defs><linearGradient id="rt-flame" x1="12" y1="8" x2="34" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#7ad0ec"/><stop offset="1" stop-color="#2b6f98"/></linearGradient></defs><path d="M24.2 6.5c1.8 4.2-.2 7.1-2.1 9.4-1.9 2.3-4.2 4.4-3.5 7.7.4 1.8 1.7 3.2 3.2 4.1-3.1-.2-5.7-2.7-6.2-5.9-.7-4.6 2.1-7.9 4.4-10.8C22.1 8.5 23.2 7.3 24.2 6.5z" fill="url(#rt-flame)" opacity=".95"/><path d="M30.8 16.2c.9 3.4-.7 5.8-2.4 7.8-1.5 1.8-3 3.4-2.2 6 .4 1.3 1.4 2.3 2.6 2.9-4.8 1.2-9.1-1.8-10.1-6.5-1.2-5.6 2.6-9.4 5.7-12.7 1.4-1.5 2.9-3 4.1-4.8 1.2 2.4 1.6 4.7 2.3 7.3z" fill="currentColor" opacity=".22"/><path d="M24 40.2c5.7 0 9.8-3.9 9.8-9.2 0-4.4-2.5-6.9-5.1-9.6-1.1 2.6-3.3 3.8-5 5.2-.2-3.4 1.1-5.7 2.6-8.1C22.6 14.8 14.2 20.4 14.2 31c0 5.3 4.1 9.2 9.8 9.2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>';
+    return '<span class="home-streak-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><defs><linearGradient id="rt-flame" x1="12" y1="8" x2="34" y2="42" gradientUnits="userSpaceOnUse"><stop class="flame-stop-a" offset="0"/><stop class="flame-stop-b" offset="1"/></linearGradient></defs><path d="M24.2 6.5c1.8 4.2-.2 7.1-2.1 9.4-1.9 2.3-4.2 4.4-3.5 7.7.4 1.8 1.7 3.2 3.2 4.1-3.1-.2-5.7-2.7-6.2-5.9-.7-4.6 2.1-7.9 4.4-10.8C22.1 8.5 23.2 7.3 24.2 6.5z" fill="url(#rt-flame)"/><path d="M30.8 16.2c.9 3.4-.7 5.8-2.4 7.8-1.5 1.8-3 3.4-2.2 6 .4 1.3 1.4 2.3 2.6 2.9-4.8 1.2-9.1-1.8-10.1-6.5-1.2-5.6 2.6-9.4 5.7-12.7 1.4-1.5 2.9-3 4.1-4.8 1.2 2.4 1.6 4.7 2.3 7.3z" fill="currentColor" opacity=".28"/><path d="M24 40.2c5.7 0 9.8-3.9 9.8-9.2 0-4.4-2.5-6.9-5.1-9.6-1.1 2.6-3.3 3.8-5 5.2-.2-3.4 1.1-5.7 2.6-8.1C22.6 14.8 14.2 20.4 14.2 31c0 5.3 4.1 9.2 9.8 9.2z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span>';
   }
 
   function sideLink(label, view, on, locked) {
@@ -1161,7 +1231,12 @@
 
   function pageTitle() {
     if (UI.view === "home") return "RianThai";
-    if (UI.view === "books") return String(UI.lexQuery || "").trim() ? "查词" : "词库";
+    if (UI.view === "books") {
+      if (String(UI.lexQuery || "").trim()) return "查词";
+      if (UI.booksSeries === "custom") return "自建词本";
+      if (UI.booksSeries) return UI.booksSeries + " 系列";
+      return "词库";
+    }
     if (UI.view === "progress") return "学习进度";
     if (UI.view === "bucket") return bucketName(UI.bucket);
     if (UI.view === "book" || UI.view === "study") {
@@ -1201,7 +1276,25 @@
     }
     if (UI.view === "phonics") {
       const id = (UI.phonics && UI.phonics.lesson) || "";
-      const names = { l1: "5 个声调", l2: "21 个声母", l3: "长短元音", l4: "音节拼读", l5: "综合拼读自测", letters: "泰文字母", review: "音标复习", report: "拼读自测报告", point: "音节" };
+      const names = {
+        l1: "第一单元 · 声调",
+        l1a: "声调 · 第 1 课",
+        l1b: "声调 · 第 2 课",
+        l1c: "声调 · 第 3 课",
+        l1d: "声调 · 第 4 课",
+        l1e: "声调 · 第 5 课",
+        l2: "第二单元 · 声母",
+        l2a: "声母 · 中辅音",
+        l2b: "声母 · 高辅音",
+        l2c: "声母 · 低辅音",
+        l3: "第三单元 · 元音",
+        l4: "第四单元 · 拼读",
+        l5: "第五单元 · 自测",
+        letters: "泰文字母",
+        review: "音标复习",
+        report: "拼读自测报告",
+        point: "音节"
+      };
       return names[id] || "音标入门";
     }
     return "RianThai";
@@ -1214,6 +1307,7 @@
       ["course", "课程"]
     ];
     const system = [
+      ["stats", "统计"],
       ["profile", "设置"]
     ];
     return '<aside class="side"><button type="button" class="logo" data-act="go" data-view="home"><span class="logo-mark" aria-hidden="true">ไ</span><b>RianThai</b></button>' +
@@ -1228,7 +1322,7 @@
       '<p class="side-label">学习</p>' +
       learn.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0], false); }).join("") +
       '<p class="side-label">系统</p>' +
-      system.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0] || UI.view === "plan", false); }).join("") +
+      system.map(function (item) { return sideLink(item[1], item[0], UI.view === item[0] || (item[0] === "profile" && UI.view === "plan"), false); }).join("") +
       "</aside>";
   }
 
@@ -1242,8 +1336,9 @@
 
   function bottomNav() {
     const items = [["home", "首页"], ["books", "词库"], ["course", "课程"], ["profile", "我的"]];
+    const underMe = { plan: 1, stats: 1, notebook: 1, texts: 1, quiz: 1 };
     return '<nav class="bottom-nav">' + items.map(function (item) {
-      const on = UI.view === item[0] || (item[0] === "profile" && UI.view === "plan");
+      const on = UI.view === item[0] || (item[0] === "profile" && underMe[UI.view]);
       return '<button type="button" data-act="go" data-view="' + item[0] + '"' + (on ? ' class="is-on"' : "") + ">" + navIcon(item[0]) + "<span>" + item[1] + "</span></button>";
     }).join("") + "</nav>";
   }
@@ -1295,28 +1390,38 @@
     const paused = savedSession(current.id);
     const roundBar = paused ? '<p class="progress-label">本轮已背 ' + paused.index + " / " + paused.ids.length + '</p><div class="mini-track"><span style="width:' + Math.round(100 * paused.index / paused.ids.length) + '%"></span></div>' : "";
     const progressName = current.id === "phonics" ? "已完成 " : "已掌握 ";
-    const word = '<button type="button" class="book-jump" data-act="book-open" data-id="' + esc(current.id) + '">' + esc(current.title) + '</button><p class="desc">' + esc(current.desc || "") + '</p><p class="progress-label">' + progressName + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
+    const word = '<button type="button" class="book-jump" data-act="book-open" data-id="' + esc(current.id) + '">' + esc(current.title) + '</button><p class="progress-label">' + progressName + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
       roundBar +
       '<div class="today-stats"><div><b>' + newCount + '</b><span>新词</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + due + '</b><span>复习</span></div></div>' +
-      '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始今天" : actionLabel(progress.status, current.id)) + "</button></div>";
+      '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(current.id) + '">' + (actionLabel(progress.status, current.id) === "学习" ? "开始" : actionLabel(progress.status, current.id)) + "</button></div>";
     const slide = UI.homeSlide ? 1 : 0;
-    const streak = Store.get().streak.count;
+    const checked = Store.checkInTotal();
+    const lit = Store.checkedInToday();
     return '<div class="page home-page">' +
       '<section class="home-hero" aria-label="RianThai">' +
       '<div class="home-mark" aria-hidden="true">ไ</div>' +
-      '<div><p class="home-brand">RianThai</p><p class="home-tag">把泰语听清，再说出口</p></div></section>' +
-      '<div class="home-streak-row">' + streakIcon() +
-      '<div><p class="today-streak-label">已打卡</p><p class="today-streak-num">' + streak + "<span>天</span></p></div></div>" +
-      '<section class="today"><div class="today-head"><p class="eyebrow">今日任务</p></div>' +
+      '<div><p class="home-brand">RianThai</p></div></section>' +
+      '<button type="button" class="home-streak-row' + (lit ? " is-lit" : "") + '" data-act="go" data-view="stats" aria-label="查看统计">' + streakIcon() +
+      '<div><p class="today-streak-label">累计打卡</p><p class="today-streak-num">' + checked + "<span>天</span></p></div></button>" +
+      '<section class="today">' +
       '<div class="today-switch" role="tablist"><button type="button" class="today-tab' + (slide === 0 ? " is-on" : "") + '" data-act="home-slide" data-id="0">单词</button><button type="button" class="today-tab' + (slide === 1 ? " is-on" : "") + '" data-act="home-slide" data-id="1">课程</button></div>' +
       '<div class="today-track" data-home-track><div class="today-slide" data-act="book-open" data-id="' + esc(current.id) + '">' + word + '</div><div class="today-slide">' + homeCourseBlock() + "</div></div></section></div>";
   }
 
+  function courseTrackId() {
+    if (local.courseLevel === "phonics") return "phonics";
+    if (local.courseLevel === "grammar") return "grammar";
+    if (["A1", "A2", "B1", "B2"].indexOf(local.courseLevel) >= 0) return local.courseLevel;
+    return "A1";
+  }
+
   function courseBook() {
-    const id = ["A1", "A2", "B1", "B2"].indexOf(local.courseLevel) >= 0 ? local.courseLevel : "A1";
+    const id = courseTrackId();
     local.courseLevel = id;
     UI.courseLevel = id;
-    return BOOKS.filter(function (book) { return book.id === id; })[0];
+    if (id === "phonics") return phonicsBook();
+    if (id === "grammar") return grammarBook();
+    return BOOKS.filter(function (book) { return book.id === id; })[0] || BOOKS[0];
   }
 
   function coursePack(level) {
@@ -1345,53 +1450,126 @@
 
   function homeCourseBlock() {
     const book = courseBook();
+    const head = '<div class="today-course"><p class="eyebrow">当前课程</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button>';
+    if (book.id === "phonics") {
+      const progress = bookProgress(book);
+      const goal = dailyPhonicsGoal();
+      const pending = phonicsCoursesPending().length;
+      const todayPlan = progress.status === "done" ? 0 : Math.min(goal, pending || goal);
+      const todayDone = phonicsCoursesDoneToday();
+      const label = progress.status === "done" ? "复习" : progress.status === "active" ? "继续" : "开始";
+      return head +
+        '<p class="progress-label">单元 ' + progress.mastered + " / " + progress.total + "</p>" +
+        '<div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
+        '<div class="today-stats"><div><b>' + todayPlan + '</b><span>今日课</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayDone + '</b><span>已完成</span></div></div>' +
+        '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="course-today">' + label + "</button></div></div>";
+    }
     const pack = coursePack(book.id);
-    const locked = levelCourseLocked(book.id);
-    const per = Math.max(1, Number(local.dailyLessons) || 1);
+    const locked = book.id === "grammar" ? false : levelCourseLocked(book.id);
+    const per = dailyCourseGoal();
     const todayLessons = Math.min(per, pack.pending.length || pack.total);
     const todayWords = locked ? 0 : courseWordsFor(pack, todayLessons);
     const width = pack.total ? Math.round(100 * pack.done / pack.total) : 0;
-    const label = locked ? "未解锁" : (pack.pending.length ? "开始今天" : "复习");
-    return '<div class="today-course"><p class="eyebrow">课程学习</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button><p class="desc">' + esc(book.desc || "") + "</p>" +
-      (locked ? '<p class="progress-label">完成上一单元后解锁</p>' : '<p class="progress-label">已完成 ' + pack.done + " / " + pack.total + " 课</p>") +
+    const label = locked ? "未解锁" : (pack.pending.length ? "开始" : "复习");
+    return head +
+      (locked ? '<p class="progress-label">未解锁</p>' : '<p class="progress-label">' + pack.done + " / " + pack.total + "</p>") +
       '<div class="mini-track"><span style="width:' + (locked ? 0 : width) + '%"></span></div>' +
-      '<div class="today-stats"><div><b>' + (locked ? 0 : todayLessons) + '</b><span>今日课时</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayWords + '</b><span>生词</span></div></div>' +
+      '<div class="today-stats"><div><b>' + (locked ? 0 : todayLessons) + '</b><span>今日课</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayWords + '</b><span>生词</span></div></div>' +
       '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="' + (locked ? "course-locked" : "course-today") + '">' + label + "</button></div></div>";
   }
 
   function courseWheel(pack) {
-    const options = [1, 2, 3];
-    const current = options.indexOf(Number(local.dailyLessons)) >= 0 ? Number(local.dailyLessons) : 1;
-    const items = options.map(function (count) {
+    const current = dailyCourseGoal();
+    const items = [1, 2, 3, 4, 5].map(function (count) {
       const days = pack.pending.length ? Math.ceil(pack.pending.length / count) : 0;
       const words = courseWordsFor(pack, count);
-      return '<button type="button" class="wheel-item' + (count === current ? " is-on" : "") + '" data-act="wheel-pick" data-kind="course" data-lessons="' + count + '">每天 ' + count + " 课，约 " + words + " 个生词，需要 " + days + " 天</button>";
+      const wordBit = words ? "，约 " + words + " 个生词" : "";
+      return '<button type="button" class="wheel-item' + (count === current ? " is-on" : "") + '" data-act="wheel-pick" data-kind="course" data-lessons="' + count + '">每天 ' + count + " 课" + wordBit + (days ? "，需要 " + days + " 天" : "") + "</button>";
     }).join("");
     return '<div class="wheel-wrap"><div class="wheel"><div class="wheel-pad"></div>' + items + '<div class="wheel-pad"></div></div></div>';
   }
 
+  function courseQuotaSection(book) {
+    if (book.id === "phonics") {
+      return '<section class="card tight" style="margin-top:12px"><h2>每日课量</h2>' +
+        '<div class="wheel-wrap"><div class="wheel"><div class="wheel-pad"></div>' + phonicsWheelInner() + '<div class="wheel-pad"></div></div></div></section>';
+    }
+    const pack = coursePack(book.id);
+    return '<section class="card tight" style="margin-top:12px"><h2>每日课量</h2>' + courseWheel(pack) + "</section>";
+  }
+
+  function phonicsUnitRows() {
+    const bag = Store.phonics();
+    const p = bag.passed || {};
+    const steps = [
+      ["l1", "第一单元 · 5 个声调", function () {
+        const n = ["l1a", "l1b", "l1c", "l1d", "l1e"].filter(function (key) { return !!p[key]; }).length;
+        return "已完成 " + n + " / 5 课";
+      }],
+      ["l2", "第二单元 · 21 个声母", function () { return p.l2 ? "已完成" : "未完成"; }],
+      ["l3", "第三单元 · 长短元音", function () { return p.l3 ? "已完成" : "未完成"; }],
+      ["l4", "第四单元 · 音节拼读", function () { return p.l4 ? "已完成" : "未完成"; }],
+      ["l5", "第五单元 · 综合自测", function () { return p.l5 ? "已完成" : "未完成"; }]
+    ];
+    return steps.map(function (item, index) {
+      const id = item[0];
+      const opened = window.PHONICS ? PHONICS.openLesson(id, bag) : (id === "l1" || !!p[["", "l1", "l2", "l3", "l4"][index]]);
+      if (!opened) {
+        return '<div class="unit-row is-locked">' + courseLockIcon() +
+          '<span class="grow"><b>' + esc(item[1]) + '</b><small>完成上一单元解锁</small></span>' +
+          '<span class="state state-lock">未解锁</span></div>';
+      }
+      return '<button type="button" class="unit-row" data-act="phonics-open" data-id="' + id + '">' +
+        '<span class="grow"><b>' + esc(item[1]) + '</b><small>' + esc(item[2]()) + "</small></span>" +
+        '<span class="chev" aria-hidden="true">&gt;</span></button>';
+    }).join("");
+  }
+
   function coursePickBar(current) {
-    return '<nav class="course-pick">' + BOOKS.map(function (book) {
-      const locked = levelCourseLocked(book.id);
-      return '<button type="button" class="' + (book.id === current.id ? "is-on" : "") + (locked ? " is-locked" : "") + '" data-act="course-pick" data-id="' + esc(book.id) + '">' + (locked ? courseLockIcon() : "") + "<span>" + esc(book.title) + "</span></button>";
+    const tracks = [phonicsBook(), grammarBook()].concat(BOOKS);
+    return '<nav class="course-pick">' + tracks.map(function (book) {
+      const on = book.id === current.id;
+      const locked = book.id === "phonics" || book.id === "grammar" ? false : levelCourseLocked(book.id);
+      return '<button type="button" class="' + (on ? "is-on" : "") + (locked ? " is-locked" : "") + '" data-act="course-pick" data-id="' + esc(book.id) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
+        (locked ? courseLockIcon() : "") +
+        "<span>" + esc(book.title) + "</span>" +
+        (on ? '<small class="course-pick-now">当前</small>' : "") +
+        "</button>";
     }).join("") + "</nav>";
   }
 
   function courseTaskPage() {
     const book = courseBook();
-    kickLexUpTo("B2");
+    if (book.id === "phonics") {
+      if (!window.PHONICS) loadPhonics().then(function (ok) { if (ok) draw(); });
+      const progress = bookProgress(book);
+      const goal = dailyPhonicsGoal();
+      const todayDone = phonicsCoursesDoneToday();
+      const pending = phonicsCoursesPending().length;
+      const start = '<button type="button" class="btn btn-primary" data-act="course-today">' + (progress.status === "done" ? "复习" : progress.status === "active" ? "继续学习" : "开始学习") + "</button>";
+      return '<div class="page course-task has-course-bar"><h1>' + esc(book.title) + '</h1>' +
+        '<p class="progress-label">单元 ' + progress.mastered + " / " + progress.total + " · 今日 " + todayDone + " / " + goal + " 课</p>" +
+        '<div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
+        '<div class="row" style="margin-top:12px">' + start + "</div>" +
+        '<section class="card tight" style="margin-top:14px"><h2>目录</h2><div class="course-list">' + (phonicsUnitRows() || '<p class="muted">5 单元</p>') + "</div></section>" +
+        courseQuotaSection(book) + "</div>" +
+        coursePickBar(book);
+    }
+    kickLexUpTo(book.id === "grammar" ? "A1" : "B2");
     const pack = coursePack(book.id);
-    const locked = levelCourseLocked(book.id);
+    const locked = book.id === "grammar" ? false : levelCourseLocked(book.id);
     const width = pack.total ? Math.round(100 * pack.done / pack.total) : 0;
     const rows = courseUnits(book.id).map(function (unit, index) { return unitRow(unit, index); }).join("");
     const start = locked
       ? '<span class="state state-lock">' + courseLockIcon() + "未解锁</span>"
       : '<button type="button" class="btn btn-primary" data-act="course-today">' + (pack.pending.length ? "开始学习" : "复习") + "</button>";
-    return '<div class="page course-task has-course-bar"><h1>' + esc(book.title) + '</h1><p class="desc">' + esc(book.desc || "") + '</p><p class="progress-label">已完成 ' + pack.done + " / " + pack.total + " 课 · 生词 " + pack.words + ' 个</p><div class="mini-track"><span style="width:' + width + '%"></span></div>' +
-      (locked ? '<p class="hint">完成上一单元后解锁</p>' : "") +
-      '<div class="row" style="margin-top:16px">' + start + "</div>" +
-      '<section class="card" style="margin-top:16px"><h2>目录</h2><p class="hint">按话题分成单元。点开单元后，再看里面的课。</p><div class="course-list">' + (rows || '<p class="muted">这一级还没有课时。</p>') + "</div></section>" +
-      '<section class="card" style="margin-top:16px"><h2>每日任务量</h2><p class="hint">上下滚动选择。天数按尚未学完的课时计算，生词数取今天要学的课。</p>' + courseWheel(pack) + "</section></div>" +
+    const meta = book.id === "grammar"
+      ? pack.done + " / " + pack.total + " 课"
+      : pack.done + " / " + pack.total + " · " + pack.words + " 词";
+    return '<div class="page course-task has-course-bar"><h1>' + esc(book.title) + '</h1><p class="progress-label">' + meta + '</p><div class="mini-track"><span style="width:' + width + '%"></span></div>' +
+      '<div class="row" style="margin-top:12px">' + start + "</div>" +
+      '<section class="card tight" style="margin-top:14px"><h2>目录</h2><div class="course-list">' + (rows || '<p class="muted">暂无课时</p>') + "</div></section>" +
+      courseQuotaSection(book) + "</div>" +
       coursePickBar(book);
   }
 
@@ -1400,17 +1578,10 @@
   }
 
   function bookIntro(book) {
-    const named = {
-      A1: "本词本用于打基础。收录问候、数字、时间、家人、物品和日常动作。句子短，便于开口。掌握本词本全部单词后，A2 进阶才会解锁。",
-      A2: "本词本用于出门办事。收录出行、问路、租房、预约、采购、就医、天气和行程。须先掌握 A1 基础的全部单词。",
-      B1: "本词本用于说出自己的想法。收录喜好、感受、计划、经历和看法。须先掌握 A2 进阶的全部单词。",
-      B2: "本词本用于把一件事说清楚。收录说明、讨论、解释、商量，以及处理复杂情况。须先掌握 B1 提高的全部单词。"
-    };
-    if (named[book.id]) return named[book.id];
-    if (book.id === "phonics") return "本词本用于认读 Paiboon+。依次学习五个声调、声母、长短元音、音节拼读和综合自测。音标入门不计入等级解锁。";
-    if (book.wordIds) return "这是自己整理的词本。单词来自生词本中勾选的条目，可按每日任务量复习。";
-    if (book.scene) return "本词本收录 " + book.level + " 等级里「" + book.scene + "」这一场景的口语词。注音采用 Paiboon+。宜按每日任务量学习。";
-    return book.desc || "本词本按场景整理口语词，注音采用 Paiboon+。";
+    if (book.desc) return book.desc;
+    if (book.wordIds) return "自建词本";
+    if (book.scene) return book.scene;
+    return "";
   }
 
   function bookScenes(book) {
@@ -1510,15 +1681,48 @@
     return '<article class="card book-card' + (paint ? " is-cover" : "") + (locked ? " is-locked has-tip" : "") + '" data-act="book-open" data-id="' + esc(book.id) + '"' + (paint ? ' style="--cover:' + paint.bg + ";--cover-ink:" + paint.ink + '"' : "") + (locked ? ' data-tip="' + esc(lockTip(book)) + '"' : "") + ">" + top + face + actions + "</article>";
   }
 
+  function seriesBooks(level) {
+    const main = BOOKS.filter(function (book) { return book.id === level; })[0];
+    const topics = sceneBooks().filter(function (book) { return book.levelId === level; });
+    return (main ? [main] : []).concat(topics);
+  }
+
+  function seriesCard(level) {
+    const book = BOOKS.filter(function (item) { return item.id === level; })[0];
+    const pending = bookPending(book);
+    const progress = pending ? { total: 0, mastered: 0, locked: isLocked(book), status: "", width: 0 } : bookProgress(book);
+    const locked = progress.locked;
+    const topics = sceneBooks().filter(function (item) { return item.levelId === level; }).length;
+    const paint = coverPaint(book);
+    const load = pending ? lexLoadProgress(lexLevelsUpTo(level)) : null;
+    let stateLine = '<p class="progress-label">已掌握 ' + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>';
+    if (pending) {
+      if (load && load.failed) stateLine = '<p class="progress-label">词库下载失败，点按重试</p>';
+      else if (load && load.loading) stateLine = '<p class="progress-label">词库下载中 ' + load.ready + "/" + load.total + '</p><div class="mini-track"><span style="width:' + load.width + '%"></span></div>';
+      else stateLine = '<p class="progress-label">点进后查看词本</p>';
+    }
+    const meta = '<p class="series-meta">' + (topics ? topics + 1 : 1) + " 本</p>";
+    return '<article class="card book-card series-card' + (paint ? " is-cover" : "") + (locked ? " is-locked has-tip" : "") + '" data-act="series-open" data-id="' + esc(level) + '"' + (paint ? ' style="--cover:' + paint.bg + ";--cover-ink:" + paint.ink + '"' : "") + (locked ? ' data-tip="' + esc(lockTip(book)) + '"' : "") + '>' +
+      '<div class="book-face"><h2><span class="cover-level">' + esc(level) + '</span><span class="cover-name">系列</span></h2>' + meta + stateLine + "</div></article>";
+  }
+
+  function customSeriesCard() {
+    const count = (local.custom || []).length;
+    return '<article class="card book-card series-card series-custom" data-act="series-open" data-id="custom">' +
+      '<div class="book-face"><h2><span class="cover-name">自建</span></h2>' +
+      '<p class="series-meta">' + count + " 本</p></div></article>";
+  }
+
+  function booksCreateCard() {
+    return '<article class="card book-create tight"><h2>新建词本</h2>' +
+      '<div class="field"><input id="new-book" placeholder="词本名称" value="' + esc(UI.draftName) + '"></div>' +
+      '<button type="button" class="btn btn-primary" data-act="create-book" style="margin-top:12px">创建</button></article>';
+  }
+
   function booksPage() {
-    const filters = ["全部", "等级", "话题", "自建"];
     const customBooks = (local.custom || []).map(function (book) {
       return { id: book.id, level: "自建", title: book.title, desc: "自建词本", wordIds: book.wordIds || [] };
     });
-    let list = [];
-    if (local.filter === "全部" || local.filter === "等级") list = list.concat(BOOKS);
-    if (local.filter === "全部" || local.filter === "话题") list = list.concat(sceneBooks());
-    if (local.filter === "全部" || local.filter === "自建") list = list.concat(customBooks);
     const q = String(UI.lexQuery || "").trim();
     const search = '<input class="search lex-search" data-act="lex-search" placeholder="搜索泰语、中文或注音" value="' + esc(UI.lexQuery || "") + '">';
     if (q) {
@@ -1529,19 +1733,27 @@
           '<span class="th" lang="th">' + esc(word.thai) + '</span><span class="grow"><b>' + esc(word.zh) + "</b><span>" + esc(word.roman || "") + "</span></span><span class=\"muted\">" + esc(levelLabel(word.level) || word.level || "") + "</span></article>";
       }).join("");
       return '<div class="page"><div class="row"><h1>查词</h1></div>' + search +
-        '<p class="hint">' + (hits.length ? "找到 " + hits.length + " 个词" + (hits.length >= 40 ? "，已显示前 40 个" : "") + "。点喇叭可听读音。" : "没有找到这个词。可换泰语、中文或注音再查。") + (allLexReady() ? "" : "词库还在下载，结果可能不全。") + "</p>" +
+        (hits.length ? '<p class="muted">' + hits.length + (hits.length >= 40 ? "+" : "") + " 个结果</p>" : '<p class="muted">无结果</p>') +
         '<div class="list">' + rows + "</div></div>";
     }
+
+    if (!UI.booksSeries) {
+      return '<div class="page books-hub"><div class="row"><h1>词本</h1></div>' + search +
+        '<div class="grid books-grid series-grid">' + levelOrder().map(seriesCard).join("") + customSeriesCard() + "</div></div>";
+    }
+
+    if (UI.booksSeries === "custom") {
+      return '<div class="page"><div class="row"><h1>自建词本</h1></div>' + search +
+        '<div class="grid books-grid">' + customBooks.map(bookCard).join("") + booksCreateCard() + "</div></div>";
+    }
+
+    const list = seriesBooks(UI.booksSeries);
     list.forEach(function (book) {
       const level = bookNeedLevel(book);
       if (level) kickLexUpTo(level);
     });
-    return '<div class="page"><div class="row"><h1>词本</h1></div>' + search + '<div class="chips">' + filters.map(function (name) {
-      return '<button type="button" class="chip' + (local.filter === name ? " is-on" : "") + '" data-act="filter" data-id="' + name + '">' + name + "</button>";
-    }).join("") + '</div><div class="grid books-grid">' + list.map(bookCard).join("") +
-      '<article class="card book-create"><h2>新建词本</h2><p class="muted">从生词本勾选单词后，可放入自建词本。</p>' +
-      '<div class="field"><input id="new-book" placeholder="词本名称" value="' + esc(UI.draftName) + '"></div>' +
-      '<button type="button" class="btn btn-primary" data-act="create-book" style="margin-top:12px">创建</button></article></div></div>';
+    return '<div class="page"><div class="row"><h1>' + esc(UI.booksSeries) + '</h1></div>' + search +
+      '<div class="grid books-grid">' + list.map(bookCard).join("") + "</div></div>";
   }
 
   function wheelHtml(book) {
@@ -1566,34 +1778,32 @@
     const book = viewingBook();
     if (bookPending(book)) {
       kickLexUpTo(bookNeedLevel(book));
-      return '<div class="page"><h1>' + esc(book.title) + '</h1><p class="hint">词库下载中，请稍候。下载完成后会自动打开。</p>' +
-        '<div class="row" style="margin-top:14px"><button type="button" class="btn" data-act="book-open" data-id="' + esc(book.id) + '">重新加载</button></div></div>';
+      return '<div class="page"><h1>' + esc(book.title) + '</h1><p class="muted">下载中…</p>' +
+        '<div class="row" style="margin-top:12px"><button type="button" class="btn" data-act="book-open" data-id="' + esc(book.id) + '">重试</button></div></div>';
     }
     const progress = bookProgress(book);
     const paused = savedSession(book.id);
     const label = book.id === "phonics" ? "已完成 " : "已掌握 ";
-    const scenes = bookScenes(book);
-    const round = paused ? '<p class="progress-label">本轮已背 ' + paused.index + " / " + paused.ids.length + '</p><div class="mini-track"><span style="width:' + Math.round(100 * paused.index / paused.ids.length) + '%"></span></div>' : "";
+    const round = paused ? '<p class="progress-label">本轮 ' + paused.index + " / " + paused.ids.length + '</p><div class="mini-track"><span style="width:' + Math.round(100 * paused.index / paused.ids.length) + '%"></span></div>' : "";
     let table = "";
     let listTitle = "词表";
     if (book.id === "phonics") {
-      listTitle = "课时";
+      listTitle = "单元";
       const bag = Store.phonics();
-      const lessons = [["l1", "第一课 · 5 个声调"], ["l2", "第二课 · 21 个声母"], ["l3", "第三课 · 长短元音"], ["l4", "第四课 · 音节拼读"], ["l5", "第五课 · 综合自测"]];
+      const lessons = [["l1", "第一单元 · 声调"], ["l2", "第二单元 · 声母"], ["l3", "第三单元 · 元音"], ["l4", "第四单元 · 拼读"], ["l5", "第五单元 · 自测"]];
       table = lessons.map(function (item) {
         const done = bag.passed && bag.passed[item[0]];
-        return '<article class="word-row"><span class="grow">' + esc(item[1]) + '</span><span class="muted">' + (done ? "已完成" : "未完成") + '</span><button type="button" class="btn btn-ghost" data-act="phonics-open" data-id="' + item[0] + '">学习</button></article>';
+        return '<article class="word-row"><span class="grow">' + esc(item[1]) + '</span><span class="muted">' + (done ? "完成" : "") + '</span><button type="button" class="btn btn-ghost" data-act="phonics-open" data-id="' + item[0] + '">学</button></article>';
       }).join("");
     }
-    const countName = book.id === "phonics" ? "课时" : "词数";
-    const facts = '<p class="book-facts"><span>等级 <b>' + esc(book.level || "词本") + "</b></span><span>" + countName + " <b>" + progress.total + "</b></span><span>" + label.trim() + " <b>" + progress.mastered + "</b></span>" +
-      (scenes.length ? "<span>场景 <b>" + esc(scenes.join("、")) + "</b></span>" : "") + "</p>";
+    const intro = bookIntro(book);
     const start = progress.locked
-      ? '<p class="hint">' + esc(lockTip(book)) + "</p>"
-      : '<div class="row" style="margin-top:16px"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(book.id) + '">' + (actionLabel(progress.status, book.id) === "学习" ? "开始学习" : actionLabel(progress.status, book.id)) + "</button></div>";
-    const wheel = book.id === "phonics" ? "" : '<section class="card" style="margin-top:16px"><h2>每日任务量</h2><p class="hint">上下滚动选择。天数按尚未掌握的内容，除以每天的新词数量。</p>' + wheelHtml(book) + "</section>";
-    const chart = book.id === "phonics" ? '<section class="card" style="margin-top:16px"><h2>' + listTitle + " · " + progress.total + '</h2><div class="lex-list">' + (table || '<p class="muted">这本词书还没有词。</p>') + "</div></section>" : progressBody(book);
-    return '<div class="page book-page"><p class="muted">' + esc(book.topic || "词本") + "</p><h1>" + esc(book.title) + "</h1><p class=\"hint\">" + esc(bookIntro(book)) + "</p>" + facts +
+      ? '<p class="muted">' + esc(lockTip(book)) + "</p>"
+      : '<div class="row" style="margin-top:12px"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(book.id) + '">' + (actionLabel(progress.status, book.id) === "学习" ? "开始" : actionLabel(progress.status, book.id)) + "</button></div>";
+    const wheel = book.id === "phonics" ? "" : '<section class="card tight" style="margin-top:14px"><h2>每日词量</h2>' + wheelHtml(book) + "</section>";
+    const chart = book.id === "phonics" ? '<section class="card tight" style="margin-top:14px"><h2>' + listTitle + '</h2><div class="lex-list">' + (table || '<p class="muted">暂无</p>') + "</div></section>" : progressBody(book);
+    return '<div class="page book-page"><h1>' + esc(book.title) + "</h1>" +
+      (intro ? '<p class="muted book-intro">' + esc(intro) + "</p>" : "") +
       '<p class="progress-label">' + label + progress.mastered + " / " + progress.total + '</p><div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
       round + start +
       chart +
@@ -1652,8 +1862,7 @@
     const legend = slices.map(function (item) {
       return '<button type="button" class="ring-jump" data-act="bucket" data-id="' + item.id + '"><span><i class="dot" style="background:' + item.color + '"></i>' + item.name + " · " + item.n + '</span><span class="chev" aria-hidden="true">&gt;</span></button>';
     }).join("");
-    return '<p class="hint">连续三次都选择认识，记为完全掌握，之后不再安排复习。中途选择不认识，则重新计数。</p>' +
-      '<section class="card ring-box"><div class="ring-wrap">' + ringSvg(slices, total) + '<div class="ring-label"><b>' + pct + '%</b><span>完全掌握</span></div></div><div class="ring-legend">' + legend + "</div></section>";
+    return '<section class="card ring-box tight"><div class="ring-wrap">' + ringSvg(slices, total) + '<div class="ring-label"><b>' + pct + '%</b><span>掌握</span></div></div><div class="ring-legend">' + legend + "</div></section>";
   }
 
   function wordListPage() {
@@ -1831,40 +2040,33 @@
         '<button type="button" class="btn btn-ghost say-play" data-act="speak" data-gender="' + gender + '" data-thai="' + encodeURIComponent(line.thai) + '">▶ 听这句</button></div>';
     }).join("");
     return '<div class="stage">' + head + '<div class="flip' + (UI.flipped ? " is-back" : "") + '" data-act="flip" role="button" tabindex="0" aria-label="翻转卡片"><div class="flip-inner">' +
-      '<div class="face face-front"><p class="thai-xl" lang="th">' + esc(word.thai) + '</p><p class="roman">' + romanBits(word.roman, word.thai) + '</p><span class="badge">Paiboon+</span>' +
-      '<p class="hint">点击卡片看释义</p></div>' +
+      '<div class="face face-front"><p class="thai-xl" lang="th">' + esc(word.thai) + '</p><p class="roman">' + romanBits(word.roman, word.thai) + '</p></div>' +
       '<div class="face face-back">' + tags +
       '<p class="zh-lg">' + esc(word.zh) + "</p>" +
       '<div class="say-list">' + examples + "</div>" +
-      (word.tip ? '<p class="hint say-tip">' + esc(word.tip) + "</p>" : "") +
-      (note ? '<p class="hint">笔记：' + esc(note) + "</p>" : "") +
-      '<p class="hint flip-hint">点击卡片收回</p></div></div></div>' +
+      (note ? '<p class="muted">笔记：' + esc(note) + "</p>" : "") +
+      "</div></div></div>" +
       '<div class="actions"><button type="button" class="btn btn-primary" data-act="known">认识</button>' +
       '<button type="button" class="btn btn-warn" data-act="unknown">不认识</button>' +
-      '<button type="button" class="btn has-tip" data-act="star" data-id="' + esc(word.id) + '" data-tip="加入生词本，后续可以单独复习这些单词">' + (starred ? "已在生词本" : "加入生词本") + "</button>" +
-      '<button type="button" class="btn btn-ghost has-tip" data-act="note" data-tip="为本词添加个人学习笔记">笔记</button></div></div>' +
-      (UI.noteOpen ? '<div class="modal-back"><form class="card modal" data-note-form><h2>笔记</h2><div class="field"><textarea id="note-text" rows="4" placeholder="写下自己的提醒">' + esc(note) + '</textarea></div><div class="row" style="margin-top:12px"><button class="btn btn-primary" type="submit">保存</button><button type="button" class="btn" data-act="close-note">取消</button></div></form></div>' : "");
+      '<button type="button" class="btn" data-act="star" data-id="' + esc(word.id) + '">' + (starred ? "已收藏" : "收藏") + "</button>" +
+      '<button type="button" class="btn btn-ghost" data-act="note">笔记</button></div></div>' +
+      (UI.noteOpen ? '<div class="modal-back"><form class="card modal" data-note-form><h2>笔记</h2><div class="field"><textarea id="note-text" rows="4" placeholder="笔记">' + esc(note) + '</textarea></div><div class="row" style="margin-top:12px"><button class="btn btn-primary" type="submit">保存</button><button type="button" class="btn" data-act="close-note">取消</button></div></form></div>' : "");
   }
 
   function summaryPage() {
     const log = dayLog();
-    const names = log.lessons.map(function (id) {
-      const lesson = findLesson(id);
-      return lesson ? lesson.title : "";
-    }).filter(Boolean);
     function cell(label, value) {
       return '<div><b>' + label + "</b><span>" + value + "</span></div>";
     }
     const minutes = Math.floor(studySeconds() / 60);
-    const time = studySeconds() > 0 && minutes < 1 ? "不到 1 分钟" : minutes + " 分钟";
-    return '<div class="page summary-page"><h1>今日小结</h1><p class="desc">今天的单词和课程已经记入。</p><div class="study-today">' +
-      cell("今日新词", String(log.newIds.length)) +
-      cell("今日复习", String(log.reviewIds.length)) +
-      cell("学习时间", time) +
-      cell("今日课程", log.lessons.length + " 课") +
+    const time = studySeconds() > 0 && minutes < 1 ? "<1 分" : minutes + " 分";
+    return '<div class="page summary-page"><h1>今日小结</h1><div class="study-today">' +
+      cell("新词", String(log.newIds.length)) +
+      cell("复习", String(log.reviewIds.length)) +
+      cell("时间", time) +
+      cell("课程", String(log.lessons.length)) +
       "</div>" +
-      (names.length ? '<p class="hint">已学课程：' + esc(names.join("、")) + "</p>" : '<p class="hint">今天还没有学完的课程。</p>') +
-      '<div class="row" style="margin-top:18px"><button type="button" class="btn btn-primary" data-act="go" data-view="home">回到首页</button></div></div>';
+      '<div class="row" style="margin-top:16px"><button type="button" class="btn btn-primary" data-act="go" data-view="home">完成</button></div></div>';
   }
 
   function notebookPage() {
@@ -1916,6 +2118,7 @@
     if (Store.phonics().doneAt) badges.push("音标入门");
     return '<div class="page"><h1>统计</h1><div class="grid" style="margin-top:16px">' +
       '<section class="card"><p class="muted">连续打卡</p><h2>' + Store.get().streak.count + ' 天</h2></section>' +
+      '<section class="card"><p class="muted">累计打卡</p><h2>' + Store.checkInTotal() + ' 天</h2></section>' +
       '<section class="card"><p class="muted">学习次数</p><h2>' + Store.get().stats.sessions + '</h2></section>' +
       '<section class="card"><p class="muted">进入复习的词</p><h2>' + Store.knownCount() + "</h2></section></div>" +
       '<section class="card" style="margin-top:14px"><h2>近 7 天学习量</h2><div class="bars" style="margin-top:12px">' + bars + "</div></section>" +
@@ -1946,49 +2149,46 @@
       '<section class="set-panel set-account">' +
       '<div class="set-account-top"><div><p class="set-kicker">账号</p><h2>' + esc(session ? session.username : "未登录") + '</h2></div>' +
       '<span class="sync-pill is-' + syncTone + '">' + esc(Account.statusLabel()) + "</span></div>" +
-      '<p class="set-hint">云端进度托管在 ' + esc(Account.apiHost()) + '。站点在 Cloudflare Pages；未登录时进度只留在本机。</p>' +
-      '<div class="set-line"><span class="muted">词汇等级 · ' + esc(levelText) + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">去测评</button></div>' +
+      '<div class="set-line"><span class="muted">等级 · ' + esc(levelText) + '</span><button type="button" class="text-btn" data-act="go" data-view="quiz">测评</button></div>' +
       '<div class="set-actions set-actions-row">' + accountBtns + "</div></section>" +
       '<p class="set-label">外观与朗读</p>' +
       '<section class="set-panel">' +
       '<div class="set-row"><div><p class="set-item-title">深色模式</p><p class="muted">' + themeLabel() + '</p></div>' +
       '<label class="switch"><input type="checkbox" data-act="theme-toggle"' + (resolvedTheme() === "dark" ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
-      '<button type="button" class="text-btn set-inline-link" data-act="theme-system">改为跟随系统</button>' +
+      '<button type="button" class="text-btn set-inline-link" data-act="theme-system">跟随系统</button>' +
       '<div class="set-divider"></div>' +
-      '<div class="set-row"><div><p class="set-item-title">朗读引擎</p><p class="muted">' + esc(voice.label) + '</p></div>' +
+      '<div class="set-row"><div><p class="set-item-title">云端朗读</p><p class="muted">' + esc(voice.label) + '</p></div>' +
       '<label class="switch" title="优先云端"><input type="checkbox" data-act="tts-cloud"' + (local.preferCloudTts ? " checked" : "") + '><span class="switch-ui"></span></label></div>' +
-      '<p class="set-hint">开关打开则优先云端朗读；关闭时优先本机泰语语音，失败再自动兜底。</p>' +
-      (voice.tip ? '<p class="set-hint">' + esc(voice.tip) + "</p>" : "") +
       "</section>" +
       '<p class="set-label">学习</p>' +
       '<section class="set-panel set-list">' +
+      '<button type="button" class="set-link" data-act="go" data-view="stats"><span>学习统计</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="plan"><span>学习计划</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="notebook"><span>生词本</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       '<button type="button" class="set-link" data-act="go" data-view="texts"><span>分级课文</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
-      '<button type="button" class="set-link" data-act="show-notes"><span>' + (UI.notesOpen ? "收起笔记" : "查看笔记") + '</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
+      '<button type="button" class="set-link" data-act="show-notes"><span>' + (UI.notesOpen ? "收起笔记" : "笔记") + '</span><span class="set-chevron" aria-hidden="true">›</span></button>' +
       noteBody +
       "</section>" +
       '<p class="set-label">数据</p>' +
       '<section class="set-panel">' +
-      '<p class="set-hint">导出或恢复本机的学习进度、笔记和词本设置。</p>' +
-      '<div class="set-actions set-actions-row"><button type="button" class="btn" data-act="export-backup">导出备份</button><button type="button" class="btn" data-act="import-backup">导入恢复</button></div>' +
+      '<div class="set-actions set-actions-row"><button type="button" class="btn" data-act="export-backup">导出</button><button type="button" class="btn" data-act="import-backup">导入</button></div>' +
       '<input id="backup-file" type="file" accept="application/json,.json" data-act="import-file" hidden></section>' +
       '<p class="set-label">关于</p>' +
       '<section class="set-panel">' +
       '<p class="set-item-title">RianThai</p>' +
-      '<p class="set-hint">练习泰语听和说。词本 A1–B2，注音 Paiboon+；句尾礼貌词按说话人更换。版本 ' + esc(window.RT_VERSION || "dev") + "。</p>" +
+      '<p class="muted">v' + esc(window.RT_VERSION || "dev") + "</p>" +
       "</section></div>";
   }
 
   function authPage() {
     const login = UI.authMode === "login";
-    return '<div class="auth"><section class="auth-brand"><p class="muted">RianThai</p><h1>先把词认准，再拿去听和说</h1><p class="muted" style="margin-top:12px">词本按 A1、A2、B1、B2 和食品、购物分开。新用户可先做词汇测评，再进入建议词本。</p></section>' +
+    return '<div class="auth"><section class="auth-brand"><p class="auth-name">RianThai</p></section>' +
       '<form class="auth-form" data-auth-form><h2>' + (login ? "登录" : "注册") + '</h2><div class="field"><span>用户名</span><input id="acct-user" autocomplete="username"></div>' +
       '<div class="field"><span>密码</span><input id="acct-pass" type="password" autocomplete="' + (login ? "current-password" : "new-password") + '"></div>' +
       '<p class="form-error">' + esc(UI.authError) + "</p>" +
-      '<button class="btn btn-primary" type="submit"' + (UI.authBusy ? " disabled" : "") + ">" + (login ? "登录" : "注册并测评") + "</button>" +
-      '<button type="button" class="btn" data-act="auth-mode" style="margin-top:8px">' + (login ? "没有账号，去注册" : "已有账号，去登录") + "</button>" +
-      '<button type="button" class="text-btn" data-act="go" data-view="home">先不登录，直接学习</button></form></div>';
+      '<button class="btn btn-primary auth-btn" type="submit"' + (UI.authBusy ? " disabled" : "") + ">" + (login ? "登录" : "注册") + "</button>" +
+      '<button type="button" class="btn auth-btn" data-act="auth-mode">' + (login ? "注册" : "已有账号") + "</button>" +
+      '<button type="button" class="text-btn" data-act="go" data-view="home">跳过</button></form></div>';
   }
 
   function quizPage() {
@@ -2139,7 +2339,8 @@
   }
 
   function unitIsOpen(unit) {
-    const list = courseUnitList();
+    // 语法轨单独按序解锁，不卡住 A1–B2 主线
+    const list = unit && unit.level === "grammar" ? courseUnits("grammar") : courseUnitList();
     const index = list.findIndex(function (item) { return item.id === unit.id; });
     if (index <= 0) return true;
     const prev = list[index - 1];
@@ -2148,7 +2349,7 @@
 
   function findUnit(id) {
     if (!id) return null;
-    const list = courseUnitList();
+    const list = courseUnitList().concat(courseUnits("grammar"));
     for (let i = 0; i < list.length; i += 1) {
       if (list[i].id === id) return list[i];
     }
@@ -2248,8 +2449,9 @@
       '<button type="button" class="btn" data-act="course-review" data-id="' + id + '"' + (reviewOn ? "" : " disabled") + ">复习</button>" +
       '<button type="button" class="btn" data-act="course-words" data-id="' + id + '">生词</button>' +
       '<button type="button" class="btn" data-act="course-notes" data-id="' + id + '">笔记</button>';
-    return '<article class="card course-item tone-' + String(lesson.level || "").toLowerCase() + '">' +
-      '<div class="course-item-main"><p class="course-state">' + lessonStateLabel(state) + "</p><h2>" + esc(lesson.title) + "</h2><p class=\"desc\">" + esc(lesson.aim || "") + '</p><p class="muted">本课 ' + (lesson.words || []).length + " 个生词，" + (lesson.lines || []).length + " 个句子</p></div>" +
+    return '<article class="card course-item tight tone-' + String(lesson.level || "").toLowerCase() + '">' +
+      '<div class="course-item-main"><p class="course-state">' + lessonStateLabel(state) + "</p><h2>" + esc(lesson.title) + "</h2>" +
+      ((lesson.words || []).length ? '<p class="muted">' + (lesson.words || []).length + " 词</p>" : "") + "</div>" +
       '<div class="course-item-actions">' + actions + "</div></article>";
   }
 
@@ -2290,17 +2492,19 @@
   }
 
   function courseHome(lessons) {
-    const level = BOOKS.some(function (book) { return book.id === UI.courseLevel; }) ? UI.courseLevel : "A1";
+    const level = courseTrackId();
     UI.courseLevel = level;
+    local.courseLevel = level;
     const filters = ["全部", "待学习", "待复习", "已完成"];
     const levels = BOOKS.map(function (book) {
       const on = book.id === level;
       if (bookPending(book)) {
         kickLexUpTo(book.id);
         const loadFailed = lexLevelsUpTo(book.id).some(function (lv) { return lexStatus[lv] === "error"; });
-        return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + '">' +
-          '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '">' +
+        return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + '"' + (on ? ' aria-current="true"' : "") + ">" +
+          '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
           "<span>" + esc(book.title) + "</span></button>" +
+          courseCurrentBadge(on) +
           '<p class="course-meta">' + (loadFailed ? "词库下载失败，点按重试" : "词库下载中…") + "</p></article>";
       }
       const items = lessons.filter(function (lesson) { return lesson.level === book.id; });
@@ -2310,23 +2514,49 @@
       const review = locked || !levelUnitsOpen(book.id)
         ? ""
         : '<button type="button" class="btn" data-act="course-unit" data-id="' + esc(book.id) + '">复习本单元全部</button>';
-      return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + (locked ? " is-locked" : "") + '">' +
-        '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '">' +
+      return '<article class="course-level tone-' + book.id.toLowerCase() + (on ? " is-on" : "") + (locked ? " is-locked" : "") + '"' + (on ? ' aria-current="true"' : "") + ">" +
+        '<button type="button" class="course-level-pick" data-act="course-level" data-id="' + esc(book.id) + '" aria-pressed="' + (on ? "true" : "false") + '">' +
         (locked ? courseLockIcon() : "") + "<span>" + esc(book.title) + "</span></button>" +
+        courseCurrentBadge(on) +
         (locked ? '<p class="course-lock-tip">完成上一单元后解锁</p><p class="course-meta"><span class="state state-lock">未解锁</span></p>' : '<p class="course-meta">已完成 ' + done + " / " + items.length + " · " + width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + width + '%"></span></div>' + review) +
         "</article>";
     }).join("");
-    const levelPending = !lexLevelsUpTo(level).every(lexReady);
-    const blocks = levelPending ? "" : courseUnits(level).map(function (unit, index) { return unitRow(unit, index); }).join("");
-    const empty = levelPending ? '<p class="muted">词库下载中，请稍候…</p>' : '<p class="muted">这一档没有符合条件的课时。</p>';
+    const grammarLessons = lessons.filter(function (lesson) { return lesson.level === "grammar"; });
+    const grammarDone = grammarLessons.filter(function (lesson) { return courseRec(lesson.id).done; }).length;
+    const grammarWidth = grammarLessons.length ? Math.round(100 * grammarDone / grammarLessons.length) : 0;
+    const grammarOn = level === "grammar";
+    const grammarCard = '<article class="course-level tone-grammar' + (grammarOn ? " is-on" : "") + '"' + (grammarOn ? ' aria-current="true"' : "") + ">" +
+      '<button type="button" class="course-level-pick" data-act="course-level" data-id="grammar" aria-pressed="' + (grammarOn ? "true" : "false") + '"><span>语法学习</span></button>' +
+      courseCurrentBadge(grammarOn) +
+      '<p class="course-meta">已完成 ' + grammarDone + " / " + grammarLessons.length + " · " + grammarWidth + '%</p>' +
+      '<div class="course-bar" aria-hidden="true"><span style="width:' + grammarWidth + '%"></span></div></article>';
     const phonics = bookProgress(phonicsBook());
-    const phonicsLabel = phonics.status === "done" ? "复习" : phonics.status === "active" ? "继续" : "学习";
-    const phonicsCard = '<article class="course-level tone-phonics"><button type="button" class="course-level-pick" data-act="phonics-open"><span>音标入门</span></button><p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div><button type="button" class="btn" data-act="phonics-open">' + phonicsLabel + "</button></article>";
-    return '<div class="page course-page"><p class="course-lead">场景化泰语课程，搭配 Paiboon+ 音标，单词句子同步学习</p>' +
-      '<div class="course-levels">' + phonicsCard + levels + "</div>" +
-      '<div class="course-filters">' + filters.map(function (name) {
+    const phonicsOn = level === "phonics";
+    // 与 A1–B2 等级卡一致：只展示进度，不在卡上再放大按钮；点选等级后用下方列表进入
+    const phonicsCard = '<article class="course-level tone-phonics' + (phonicsOn ? " is-on" : "") + '"' + (phonicsOn ? ' aria-current="true"' : "") + ">" +
+      '<button type="button" class="course-level-pick" data-act="course-level" data-id="phonics" aria-pressed="' + (phonicsOn ? "true" : "false") + '"><span>音标入门</span></button>' +
+      courseCurrentBadge(phonicsOn) +
+      '<p class="course-meta">已完成 ' + phonics.mastered + " / " + phonics.total + " · " + phonics.width + '%</p><div class="course-bar" aria-hidden="true"><span style="width:' + phonics.width + '%"></span></div></article>';
+    let blocks = "";
+    let empty = '<p class="muted">暂无课时</p>';
+    if (level === "phonics") {
+      blocks = phonicsUnitRows();
+      empty = '<p class="muted">5 单元</p>';
+    } else if (level === "grammar") {
+      kickLexUpTo("A1");
+      const pending = !lexLevelsUpTo("A1").every(lexReady);
+      blocks = pending ? "" : courseUnits("grammar").map(function (unit, index) { return unitRow(unit, index); }).join("");
+      empty = pending ? '<p class="muted">下载中…</p>' : '<p class="muted">暂无课时</p>';
+    } else {
+      const levelPending = !lexLevelsUpTo(level).every(lexReady);
+      blocks = levelPending ? "" : courseUnits(level).map(function (unit, index) { return unitRow(unit, index); }).join("");
+      empty = levelPending ? '<p class="muted">下载中…</p>' : empty;
+    }
+    return '<div class="page course-page">' +
+      '<div class="course-levels">' + phonicsCard + grammarCard + levels + "</div>" +
+      (level === "phonics" || level === "grammar" ? "" : '<div class="course-filters">' + filters.map(function (name) {
         return '<button type="button" class="chip' + (UI.courseFilter === name ? " is-on" : "") + '" data-act="course-filter" data-id="' + name + '">' + name + "</button>";
-      }).join("") + "</div>" +
+      }).join("") + "</div>") +
       '<div class="course-list">' + (blocks || empty) + "</div></div>";
   }
 
@@ -2341,7 +2571,7 @@
     const rows = courseWordList(lesson).map(function (word) {
       return '<article class="word-row"><div class="grow"><p class="th" lang="th">' + esc(word.thai) + '</p><p class="ipa">' + esc(word.roman || "") + '</p><p class="muted">' + esc(word.zh) + "</p></div></article>";
     }).join("");
-    return '<div class="page course-page"><p class="muted">' + esc(lesson.title) + '</p><h1>本课生词</h1><p class="hint">这些词已加入生词本，可在设置中的生词本里继续复习。</p><div class="list" style="margin-top:14px">' + (rows || '<p class="muted">本课还没有生词。</p>') + "</div></div>";
+    return '<div class="page course-page"><p class="muted">' + esc(lesson.title) + '</p><h1>本课生词</h1><div class="list" style="margin-top:12px">' + (rows || '<p class="muted">暂无</p>') + "</div></div>";
   }
 
   function courseNotesPage(lesson) {
@@ -2867,7 +3097,7 @@
   let endSlide = null;
 
   function currentPageKey() {
-    return [UI.view, UI.bookId, UI.lessonId || "", UI.coursePane || "", UI.courseFocus || "", (UI.phonics && UI.phonics.lesson) || "", UI.unit || 0, UI.openBook || "", UI.bucket || "", UI.courseUnit || ""].join("|");
+    return [UI.view, UI.bookId, UI.lessonId || "", UI.coursePane || "", UI.courseFocus || "", (UI.phonics && UI.phonics.lesson) || "", UI.unit || 0, UI.openBook || "", UI.booksSeries || "", UI.bucket || "", UI.courseUnit || ""].join("|");
   }
 
   function draw() {
@@ -2901,8 +3131,11 @@
     else if (UI.view === "coursebook") html = shell(courseTaskPage());
     else if (UI.view === "summary") html = shell(summaryPage());
     else if (UI.view === "phonics") {
-      if (window.PHONICS) html = shell(PHONICS.render(UI.phonics, Store.phonics()));
-      else {
+      if (window.PHONICS) {
+        UI.phonics.dailyPhonics = dailyPhonicsGoal();
+        UI.phonics.phonicsToday = phonicsCoursesDoneToday();
+        html = shell(PHONICS.render(UI.phonics, Store.phonics()));
+      } else {
         loadPhonics().then(function (ok) { if (ok) draw(); });
         html = shell('<div class="page"><h1>音标入门</h1><p class="hint">音标下载中，请稍候…</p></div>');
       }
@@ -2967,6 +3200,28 @@
     });
   }
 
+  function restoreToneSectionQuiz(kind) {
+    if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return null;
+    const row = PHONICS.sectionState(Store.phonics(), kind);
+    if (!row.quiz || row.quiz.kind !== kind) return null;
+    try {
+      return JSON.parse(JSON.stringify(row.quiz));
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function persistToneSectionQuiz(quiz) {
+    if (!quiz || !/^l1[a-e]$/.test(String(quiz.kind || ""))) return;
+    const row = PHONICS.sectionState(Store.phonics(), quiz.kind);
+    try {
+      row.quiz = JSON.parse(JSON.stringify(quiz));
+    } catch (err) {
+      row.quiz = quiz;
+    }
+    Store.phonicsSave();
+  }
+
   function finishPhonicsQuiz(quiz) {
     quiz.done = true;
     quiz.passed = !!(quiz.total && quiz.correct / quiz.total >= 0.8);
@@ -2986,10 +3241,28 @@
       };
       Store.phonicsSave();
     }
+    persistToneSectionQuiz(quiz);
     if (!quiz.passed) return;
     const fresh = Store.phonicsPass(quiz.kind);
-    Store.award("phonics:practice", 5);
-    if (fresh) toast("音标入门已完成，今日打卡已记下。");
+    const xp = Store.award("phonics:practice", 5);
+    toastPhonicsCourseDone(quiz.kind, fresh, xp);
+  }
+
+  function toastPhonicsCourseDone(kind, fresh, xp) {
+    if (fresh) {
+      toast("音标入门已完成，今日打卡已记下。");
+      return;
+    }
+    const id = String(kind || "");
+    const counts = PHONICS_COURSE_IDS.indexOf(id) >= 0;
+    const done = phonicsCoursesDoneToday();
+    const goal = dailyPhonicsGoal();
+    if (counts && done >= goal) {
+      toast("今日 " + goal + " 课已完成。");
+      return;
+    }
+    if (xp) toast("本组已完成，今日打卡已记下。");
+    else if (/^l1[a-e]$/.test(id)) toast("本课已完成。");
   }
 
   function exportBackup() {
@@ -3103,10 +3376,22 @@
       if (sectionSwitch) {
         UI.nav = [];
         UI.openBook = "";
+        UI.booksSeries = "";
         UI.bucket = "";
         UI.courseUnit = "";
         if (button.closest(".bottom-nav")) navMotion = "cut";
       } else noteNav(before);
+      draw();
+      return;
+    }
+    if (act === "series-open") {
+      const id = button.dataset.id || "";
+      if (!id) return;
+      if (id !== "custom" && !BOOKS.some(function (book) { return book.id === id; })) return;
+      const before = snapshot();
+      UI.booksSeries = id;
+      if (id !== "custom") kickLexUpTo(id);
+      noteNav(before);
       draw();
       return;
     }
@@ -3124,7 +3409,7 @@
       const kind = button.dataset.kind || "word";
       if (kind === "course") {
         const level = button.dataset.id || local.courseLevel || "A1";
-        if (BOOKS.some(function (book) { return book.id === level; })) {
+        if (level === "phonics" || BOOKS.some(function (book) { return book.id === level; })) {
           UI.courseLevel = level;
           local.courseLevel = level;
           saveLocal();
@@ -3165,14 +3450,24 @@
       return;
     }
     if (act === "course-level" || act === "course-pick") {
-      if (BOOKS.some(function (book) { return book.id === button.dataset.id; })) {
-        UI.courseLevel = button.dataset.id;
-        local.courseLevel = button.dataset.id;
+      const pick = button.dataset.id || "";
+      if (pick === "phonics" || pick === "grammar" || BOOKS.some(function (book) { return book.id === pick; })) {
+        const prev = courseTrackId();
+        UI.courseLevel = pick;
+        local.courseLevel = pick;
         UI.courseUnit = "";
         saveLocal();
-        if (!lexLevelsUpTo(button.dataset.id).every(lexReady)) {
+        if (pick !== prev) toast("已设为当前课程：" + courseTrackTitle(pick));
+        if (pick === "phonics" && !window.PHONICS) {
+          loadPhonics().then(function (ok) { if (ok) draw(); });
+        } else if (pick === "grammar") {
+          if (!lexLevelsUpTo("A1").every(lexReady)) {
+            toast("正在下载词库，请稍候");
+            kickLexUpTo("A1");
+          }
+        } else if (pick !== "phonics" && !lexLevelsUpTo(pick).every(lexReady)) {
           toast("正在下载词库，请稍候");
-          kickLexUpTo(button.dataset.id);
+          kickLexUpTo(pick);
         }
       }
       draw();
@@ -3216,6 +3511,10 @@
       UI.view = "coursebook";
       UI.lessonId = "";
       UI.coursePane = "";
+      UI.courseUnit = "";
+      if (courseTrackId() === "phonics" && !window.PHONICS) {
+        loadPhonics().then(function (ok) { if (ok) draw(); });
+      }
       noteNav(before);
       draw();
       return;
@@ -3226,6 +3525,33 @@
     }
     if (act === "course-today") {
       const book = courseBook();
+      if (book.id === "phonics") {
+        const before = snapshot();
+        local.courseLevel = "phonics";
+        UI.courseLevel = "phonics";
+        saveLocal();
+        if (!window.PHONICS) {
+          toast("音标下载中，请稍候");
+          loadPhonics().then(function (ok) {
+            if (!ok) {
+              toast("音标下载失败，请检查网络后再试");
+              return;
+            }
+            UI.phonics.lesson = "";
+            UI.phonics.quiz = null;
+            UI.view = "phonics";
+            noteNav(before);
+            draw();
+          });
+          return;
+        }
+        UI.phonics.lesson = "";
+        UI.phonics.quiz = null;
+        UI.view = "phonics";
+        noteNav(before);
+        draw();
+        return;
+      }
       if (bookPending(book)) {
         wantBook(book);
         return;
@@ -3400,11 +3726,15 @@
       return;
     }
     if (act === "phonics-locked") {
-      toast("请先完成上一课。");
+      const lockedId = button.dataset.id || "";
+      toast(/^l1[b-e]$/.test(lockedId) ? "请先完成上一课。" : "请先完成上一单元。");
       return;
     }
     if (act === "phonics-open") {
       const id = button.dataset.id || "";
+      local.courseLevel = "phonics";
+      UI.courseLevel = "phonics";
+      saveLocal();
       if (!window.PHONICS) {
         toast("音标下载中，请稍候");
         loadPhonics().then(function (ok) {
@@ -3414,7 +3744,7 @@
           }
           const beforeLate = snapshot();
           UI.phonics.lesson = id && PHONICS.openLesson(id, Store.phonics()) ? id : "";
-          UI.phonics.quiz = null;
+          UI.phonics.quiz = restoreToneSectionQuiz(UI.phonics.lesson);
           UI.phonics.flipped = false;
           if (UI.phonics.lesson === "l4") {
             UI.phonics.deck = PHONICS.a1Deck();
@@ -3429,11 +3759,11 @@
       }
       const before = snapshot();
       if (id && !PHONICS.openLesson(id, Store.phonics())) {
-        toast(id === "l2b" || id === "l2c" ? "请先完成上一批声母。" : "请先完成上一课。");
+        toast(/^l1[b-e]$/.test(id) ? "请先完成上一课。" : (id === "l2b" || id === "l2c" ? "请先完成上一批声母。" : "请先完成上一单元。"));
         return;
       }
       UI.phonics.lesson = id;
-      UI.phonics.quiz = null;
+      UI.phonics.quiz = restoreToneSectionQuiz(id);
       UI.phonics.flipped = false;
       if (id === "l4") {
         UI.phonics.deck = PHONICS.a1Deck();
@@ -3461,8 +3791,66 @@
       draw();
       return;
     }
+    if (act === "phonics-study-prev") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      if (button.disabled) return;
+      PHONICS.retreatStudy(Store.phonics(), kind);
+      Store.phonicsSave();
+      draw();
+      return;
+    }
+    if (act === "phonics-study-next") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      PHONICS.advanceStudy(Store.phonics(), kind);
+      Store.phonicsSave();
+      draw();
+      return;
+    }
+    if (act === "phonics-study-reset") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      PHONICS.resetStudy(Store.phonics(), kind);
+      const row = PHONICS.sectionState(Store.phonics(), kind);
+      row.quiz = null;
+      Store.phonicsSave();
+      UI.phonics.quiz = null;
+      draw();
+      return;
+    }
+    if (act === "phonics-quiz-dismiss") {
+      const kind = button.dataset.id || UI.phonics.lesson;
+      if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
+      const row = PHONICS.sectionState(Store.phonics(), kind);
+      row.quiz = null;
+      Store.phonicsSave();
+      UI.phonics.quiz = null;
+      draw();
+      return;
+    }
     if (act === "phonics-drill") {
-      UI.phonics.quiz = button.dataset.id === "l5" ? PHONICS.makeExam() : PHONICS.makeDrill(button.dataset.id);
+      const drillId = button.dataset.id || "";
+      if (!window.PHONICS) {
+        toast("音标下载中，请稍候");
+        loadPhonics();
+        return;
+      }
+      if (drillId && !PHONICS.openLesson(drillId, Store.phonics())) {
+        toast(/^l1[b-e]$/.test(drillId) ? "请先完成上一课。" : (drillId === "l2b" || drillId === "l2c" ? "请先完成上一批声母。" : "请先完成上一单元。"));
+        return;
+      }
+      const before = snapshot();
+      UI.view = "phonics";
+      if (/^l1[a-e]$/.test(drillId)) UI.phonics.lesson = drillId;
+      else if (drillId === "l5" || drillId === "l3") UI.phonics.lesson = drillId;
+      else if (/^l2[abc]$/.test(drillId)) {
+        UI.phonics.lesson = "l2";
+        UI.phonics.batch = drillId.slice(2);
+      }
+      UI.phonics.quiz = drillId === "l5" ? PHONICS.makeExam() : PHONICS.makeDrill(drillId);
+      persistToneSectionQuiz(UI.phonics.quiz);
+      noteNav(before);
       draw();
       return;
     }
@@ -3480,6 +3868,7 @@
           answerLabel: item.answerLabel
         });
       }
+      persistToneSectionQuiz(quiz);
       draw();
       return;
     }
@@ -3489,6 +3878,7 @@
       quiz.picked = "";
       quiz.index += 1;
       if (quiz.index >= quiz.items.length) finishPhonicsQuiz(quiz);
+      else persistToneSectionQuiz(quiz);
       draw();
       return;
     }
@@ -3511,9 +3901,10 @@
       return;
     }
     if (act === "phonics-pass") {
-      const fresh = Store.phonicsPass(button.dataset.id || "l4");
-      Store.award("phonics:practice", 5);
-      if (fresh) toast("音标入门已完成，今日打卡已记下。");
+      const kind = button.dataset.id || "l4";
+      const fresh = Store.phonicsPass(kind);
+      const xp = Store.award("phonics:practice", 5);
+      toastPhonicsCourseDone(kind, fresh, xp);
       draw();
       return;
     }
@@ -3871,6 +4262,14 @@
       saveLocal();
       return;
     }
+    if (best.dataset.kind === "phonics") {
+      const nextPhonics = Number(best.dataset.lessons);
+      if (!(nextPhonics >= 1 && nextPhonics <= 5)) return;
+      if (Number(local.dailyPhonics) === nextPhonics) return;
+      local.dailyPhonics = nextPhonics;
+      saveLocal();
+      return;
+    }
     const nextNew = Number(best.dataset.new);
     const nextReview = Number(best.dataset.review);
     if (local.dailyNew === nextNew && Number(local.dailyReview) === nextReview) return;
@@ -3893,12 +4292,37 @@
   });
 
   function loadFonts() {
-    if (document.getElementById("site-fonts")) return;
+    if (document.getElementById("site-fonts")) return Promise.resolve();
     const link = document.createElement("link");
     link.id = "site-fonts";
     link.rel = "stylesheet";
     link.href = "https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Sarabun:wght@400;600;700&display=swap";
     document.head.appendChild(link);
+    return new Promise(function (resolve) {
+      let settled = false;
+      function done() {
+        if (settled) return;
+        settled = true;
+        resolve();
+      }
+      link.addEventListener("load", done);
+      link.addEventListener("error", done);
+      window.setTimeout(done, 900);
+    });
+  }
+
+  function waitFontsReady() {
+    if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+    return Promise.race([
+      document.fonts.ready.then(function () {}, function () {}),
+      new Promise(function (resolve) { window.setTimeout(resolve, 700); })
+    ]);
+  }
+
+  function afterPaint(done) {
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(done);
+    });
   }
 
   function hideBoot() {
@@ -3909,18 +4333,21 @@
     function close() {
       if (closed) return;
       closed = true;
-      window.setTimeout(function () {
-        boot.classList.add("is-done");
-        function remove() {
-          if (boot.parentNode) boot.parentNode.removeChild(boot);
-        }
-        if (reduce) {
-          remove();
-          return;
-        }
-        boot.addEventListener("transitionend", remove);
-        window.setTimeout(remove, 400);
-      }, reduce ? 0 : 180);
+      // 等首页已画在 boot 底下再淡出，避免露出半成品后整页重绘的闪一下。
+      afterPaint(function () {
+        window.setTimeout(function () {
+          boot.classList.add("is-done");
+          function remove() {
+            if (boot.parentNode) boot.parentNode.removeChild(boot);
+          }
+          if (reduce) {
+            remove();
+            return;
+          }
+          boot.addEventListener("transitionend", remove);
+          window.setTimeout(remove, 400);
+        }, reduce ? 0 : 120);
+      });
     }
     const css = document.getElementById("app-css");
     if (css && css.media === "print" && !css.sheet) {
@@ -3943,13 +4370,23 @@
     return lexLevelsUpTo(top);
   }
 
+  // 后台词库齐了：仅在当前页确实依赖未齐等级时才整页重绘，避免进首页后无端闪一下。
+  function shouldRedrawForLex() {
+    if (UI.view === "books" || UI.view === "book" || UI.view === "bucket" || UI.view === "progress") return true;
+    if (UI.view === "study" || UI.view === "quiz" || UI.view === "summary") return true;
+    if (UI.view === "course" || UI.view === "coursebook") return true;
+    return false;
+  }
+
   function prefetchRestLex() {
     const rest = levelOrder().filter(function (lv) { return !lexStatus[lv]; });
     if (!rest.length) return;
     const run = function () {
       rest.reduce(function (chain, level) {
         return chain.then(function () { return loadLex(level); });
-      }, Promise.resolve()).then(function () { draw(); });
+      }, Promise.resolve()).then(function () {
+        if (shouldRedrawForLex()) draw();
+      });
     };
     if (window.requestIdleCallback) window.requestIdleCallback(run, { timeout: 4000 });
     else window.setTimeout(run, 1200);
@@ -3958,14 +4395,13 @@
   try {
     bindEdgeBack();
     const needed = bootLevels();
-    setBootStatus("正在准备词库…");
+    const fontsWait = loadFonts().then(waitFontsReady);
     const bootWait = Promise.all(needed.map(loadLex));
-    draw();
-    loadFonts();
-    bootWait.then(function (results) {
+    // 词库未齐时不先画首页：否则 0/0 → 真数据 会在 boot 淡出时叠成一次「刷新」。
+    Promise.all([bootWait, fontsWait]).then(function (parts) {
+      const results = parts[0] || [];
       const ok = results.every(Boolean);
       if (!ok) setBootStatus("词库下载失败，可进入后点按重试");
-      else setBootStatus("准备完成");
       draw();
       hideBoot();
       if (ok) prefetchRestLex();
