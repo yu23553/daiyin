@@ -448,7 +448,7 @@
   function phonicsPass(id) {
     const bag = phonicsBag();
     if (!bag.passed[id]) bag.passed[id] = dateKey();
-    // 第一课五节都通过后记 l1 完成（与声母三批规则一致；已有 l1 的旧进度保留）
+    // 第一单元五课都通过后记 l1 完成（与声母三批规则一致；已有 l1 的旧进度保留）
     if (bag.passed.l1a && bag.passed.l1b && bag.passed.l1c && bag.passed.l1d && bag.passed.l1e && !bag.passed.l1) {
       bag.passed.l1 = dateKey();
     }

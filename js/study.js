@@ -71,6 +71,11 @@
     local.dailyLessons = 1;
     migrated = true;
   }
+  // 音标入门：每天学习几「课」（原「节」）；与 CEFR 的 dailyLessons 分开存。
+  if (!(Number(local.dailyPhonics) >= 1 && Number(local.dailyPhonics) <= 5)) {
+    local.dailyPhonics = 1;
+    migrated = true;
+  }
   if (local.mode !== "card" && local.mode !== "hear-word" && local.mode !== "hear-sent") {
     local.mode = "card";
     migrated = true;
@@ -1134,6 +1139,39 @@
     if (UI.nav.length > 40) UI.nav.shift();
   }
 
+  // 音标可计「课」：单元内最小完成单元（声调 5 课、声母 3 批、后三单元各 1 课）。
+  const PHONICS_COURSE_IDS = ["l1a", "l1b", "l1c", "l1d", "l1e", "l2a", "l2b", "l2c", "l3", "l4", "l5"];
+
+  function dailyPhonicsGoal() {
+    const n = Number(local.dailyPhonics);
+    if (n >= 1 && n <= 5) return n;
+    return 1;
+  }
+
+  function phonicsCoursesDoneToday() {
+    const bag = Store.phonics();
+    const today = Store.dateKey();
+    const passed = bag.passed || {};
+    return PHONICS_COURSE_IDS.filter(function (id) { return passed[id] === today; }).length;
+  }
+
+  function phonicsCoursesPending() {
+    const bag = Store.phonics();
+    const passed = bag.passed || {};
+    return PHONICS_COURSE_IDS.filter(function (id) { return !passed[id]; });
+  }
+
+  function phonicsWheelHtml() {
+    const current = dailyPhonicsGoal();
+    const pending = phonicsCoursesPending().length;
+    const items = [1, 2, 3, 4, 5].map(function (count) {
+      const days = pending ? Math.ceil(pending / count) : 0;
+      return '<button type="button" class="wheel-item' + (count === current ? " is-on" : "") + '" data-act="wheel-pick" data-kind="phonics" data-lessons="' + count + '">每天 ' + count + " 课" + (days ? "，约 " + days + " 天" : "") + "</button>";
+    }).join("");
+    return '<section class="card tight" style="margin-top:12px"><h2>每日课量</h2>' +
+      '<div class="wheel-wrap"><div class="wheel"><div class="wheel-pad"></div>' + items + '<div class="wheel-pad"></div></div></div></section>';
+  }
+
   function loadOptions() {
     return [[5, 10], [5, 15], [10, 20], [10, 30], [15, 30], [20, 40], [20, 60]];
   }
@@ -1235,16 +1273,19 @@
     if (UI.view === "phonics") {
       const id = (UI.phonics && UI.phonics.lesson) || "";
       const names = {
-        l1: "5 个声调",
-        l1a: "声调 · 第 1 节",
-        l1b: "声调 · 第 2 节",
-        l1c: "声调 · 第 3 节",
-        l1d: "声调 · 第 4 节",
-        l1e: "声调 · 第 5 节",
-        l2: "21 个声母",
-        l3: "长短元音",
-        l4: "音节拼读",
-        l5: "综合拼读自测",
+        l1: "第一单元 · 声调",
+        l1a: "声调 · 第 1 课",
+        l1b: "声调 · 第 2 课",
+        l1c: "声调 · 第 3 课",
+        l1d: "声调 · 第 4 课",
+        l1e: "声调 · 第 5 课",
+        l2: "第二单元 · 声母",
+        l2a: "声母 · 中辅音",
+        l2b: "声母 · 高辅音",
+        l2c: "声母 · 低辅音",
+        l3: "第三单元 · 元音",
+        l4: "第四单元 · 拼读",
+        l5: "第五单元 · 自测",
         letters: "泰文字母",
         review: "音标复习",
         report: "拼读自测报告",
@@ -1408,12 +1449,15 @@
     const head = '<div class="today-course"><p class="eyebrow">当前课程</p><button type="button" class="book-jump" data-act="course-open">' + esc(book.title) + '<span class="chev" aria-hidden="true">&gt;</span></button>';
     if (book.id === "phonics") {
       const progress = bookProgress(book);
-      const left = Math.max(0, progress.total - progress.mastered);
+      const goal = dailyPhonicsGoal();
+      const pending = phonicsCoursesPending().length;
+      const todayPlan = progress.status === "done" ? 0 : Math.min(goal, pending || goal);
+      const todayDone = phonicsCoursesDoneToday();
       const label = progress.status === "done" ? "复习" : progress.status === "active" ? "继续" : "开始";
       return head +
-        '<p class="progress-label">' + progress.mastered + " / " + progress.total + "</p>" +
+        '<p class="progress-label">单元 ' + progress.mastered + " / " + progress.total + "</p>" +
         '<div class="mini-track"><span style="width:' + progress.width + '%"></span></div>' +
-        '<div class="today-stats"><div><b>' + (left || progress.total) + '</b><span>剩余</span></div></div>' +
+        '<div class="today-stats"><div><b>' + todayPlan + '</b><span>今日课</span></div><span class="today-dot" aria-hidden="true">·</span><div><b>' + todayDone + '</b><span>已完成</span></div></div>' +
         '<div class="row today-actions"><button type="button" class="btn btn-primary" data-act="course-today">' + label + "</button></div></div>";
     }
     const pack = coursePack(book.id);
@@ -1686,9 +1730,9 @@
     let table = "";
     let listTitle = "词表";
     if (book.id === "phonics") {
-      listTitle = "课时";
+      listTitle = "单元";
       const bag = Store.phonics();
-      const lessons = [["l1", "第一课 · 声调"], ["l2", "第二课 · 声母"], ["l3", "第三课 · 元音"], ["l4", "第四课 · 拼读"], ["l5", "第五课 · 自测"]];
+      const lessons = [["l1", "第一单元 · 声调"], ["l2", "第二单元 · 声母"], ["l3", "第三单元 · 元音"], ["l4", "第四单元 · 拼读"], ["l5", "第五单元 · 自测"]];
       table = lessons.map(function (item) {
         const done = bag.passed && bag.passed[item[0]];
         return '<article class="word-row"><span class="grow">' + esc(item[1]) + '</span><span class="muted">' + (done ? "完成" : "") + '</span><button type="button" class="btn btn-ghost" data-act="phonics-open" data-id="' + item[0] + '">学</button></article>';
@@ -1698,7 +1742,9 @@
     const start = progress.locked
       ? '<p class="muted">' + esc(lockTip(book)) + "</p>"
       : '<div class="row" style="margin-top:12px"><button type="button" class="btn btn-primary" data-act="start" data-id="' + esc(book.id) + '">' + (actionLabel(progress.status, book.id) === "学习" ? "开始" : actionLabel(progress.status, book.id)) + "</button></div>";
-    const wheel = book.id === "phonics" ? "" : '<section class="card tight" style="margin-top:14px"><h2>每日词量</h2>' + wheelHtml(book) + "</section>";
+    const wheel = book.id === "phonics"
+      ? phonicsWheelHtml()
+      : '<section class="card tight" style="margin-top:14px"><h2>每日词量</h2>' + wheelHtml(book) + "</section>";
     const chart = book.id === "phonics" ? '<section class="card tight" style="margin-top:14px"><h2>' + listTitle + '</h2><div class="lex-list">' + (table || '<p class="muted">暂无</p>') + "</div></section>" : progressBody(book);
     return '<div class="page book-page"><h1>' + esc(book.title) + "</h1>" +
       (intro ? '<p class="muted book-intro">' + esc(intro) + "</p>" : "") +
@@ -2441,28 +2487,29 @@
       const bag = Store.phonics();
       const p = bag.passed || {};
       const steps = [
-        ["l1", "第一课 · 5 个声调", function () {
+        ["l1", "第一单元 · 5 个声调", function () {
           const n = ["l1a", "l1b", "l1c", "l1d", "l1e"].filter(function (key) { return !!p[key]; }).length;
-          return "已完成 " + n + " / 5 节";
+          return "已完成 " + n + " / 5 课";
         }],
-        ["l2", "第二课 · 21 个声母", function () { return p.l2 ? "已完成" : "未完成"; }],
-        ["l3", "第三课 · 长短元音", function () { return p.l3 ? "已完成" : "未完成"; }],
-        ["l4", "第四课 · 音节拼读", function () { return p.l4 ? "已完成" : "未完成"; }],
-        ["l5", "第五课 · 综合自测", function () { return p.l5 ? "已完成" : "未完成"; }]
+        ["l2", "第二单元 · 21 个声母", function () { return p.l2 ? "已完成" : "未完成"; }],
+        ["l3", "第三单元 · 长短元音", function () { return p.l3 ? "已完成" : "未完成"; }],
+        ["l4", "第四单元 · 音节拼读", function () { return p.l4 ? "已完成" : "未完成"; }],
+        ["l5", "第五单元 · 综合自测", function () { return p.l5 ? "已完成" : "未完成"; }]
       ];
       blocks = steps.map(function (item, index) {
         const id = item[0];
         const opened = window.PHONICS ? PHONICS.openLesson(id, bag) : (id === "l1" || !!p[["", "l1", "l2", "l3", "l4"][index]]);
         if (!opened) {
           return '<div class="unit-row is-locked">' + courseLockIcon() +
-            '<span class="grow"><b>' + esc(item[1]) + '</b><small>完成上一课解锁</small></span>' +
+            '<span class="grow"><b>' + esc(item[1]) + '</b><small>完成上一单元解锁</small></span>' +
             '<span class="state state-lock">未解锁</span></div>';
         }
         return '<button type="button" class="unit-row" data-act="phonics-open" data-id="' + id + '">' +
           '<span class="grow"><b>' + esc(item[1]) + '</b><small>' + esc(item[2]()) + "</small></span>" +
           '<span class="chev" aria-hidden="true">&gt;</span></button>';
       }).join("");
-      empty = '<p class="muted">5 课</p>';
+      empty = '<p class="muted">5 单元</p>';
+      blocks += phonicsWheelHtml();
     } else if (level === "grammar") {
       kickLexUpTo("A1");
       const pending = !lexLevelsUpTo("A1").every(lexReady);
@@ -3052,8 +3099,12 @@
     else if (UI.view === "coursebook") html = shell(courseTaskPage());
     else if (UI.view === "summary") html = shell(summaryPage());
     else if (UI.view === "phonics") {
-      if (window.PHONICS) html = shell(PHONICS.render(UI.phonics, Store.phonics()));
-      else {
+      if (window.PHONICS) {
+        UI.phonics.dailyPhonics = dailyPhonicsGoal();
+        UI.phonics.phonicsToday = phonicsCoursesDoneToday();
+        UI.phonics.phonicsWheel = UI.phonics.lesson ? "" : phonicsWheelHtml();
+        html = shell(PHONICS.render(UI.phonics, Store.phonics()));
+      } else {
         loadPhonics().then(function (ok) { if (ok) draw(); });
         html = shell('<div class="page"><h1>音标入门</h1><p class="hint">音标下载中，请稍候…</p></div>');
       }
@@ -3163,9 +3214,24 @@
     if (!quiz.passed) return;
     const fresh = Store.phonicsPass(quiz.kind);
     const xp = Store.award("phonics:practice", 5);
-    if (fresh) toast("音标入门已完成，今日打卡已记下。");
-    else if (xp) toast("本组已完成，今日打卡已记下。");
-    else if (/^l1[a-e]?$/.test(String(quiz.kind || ""))) toast("本节已完成。");
+    toastPhonicsCourseDone(quiz.kind, fresh, xp);
+  }
+
+  function toastPhonicsCourseDone(kind, fresh, xp) {
+    if (fresh) {
+      toast("音标入门已完成，今日打卡已记下。");
+      return;
+    }
+    const id = String(kind || "");
+    const counts = PHONICS_COURSE_IDS.indexOf(id) >= 0;
+    const done = phonicsCoursesDoneToday();
+    const goal = dailyPhonicsGoal();
+    if (counts && done >= goal) {
+      toast("今日 " + goal + " 课已完成。");
+      return;
+    }
+    if (xp) toast("本组已完成，今日打卡已记下。");
+    else if (/^l1[a-e]$/.test(id)) toast("本课已完成。");
   }
 
   function exportBackup() {
@@ -3635,7 +3701,7 @@
     }
     if (act === "phonics-locked") {
       const lockedId = button.dataset.id || "";
-      toast(/^l1[b-e]$/.test(lockedId) ? "请先完成上一节。" : "请先完成上一课。");
+      toast(/^l1[b-e]$/.test(lockedId) ? "请先完成上一课。" : "请先完成上一单元。");
       return;
     }
     if (act === "phonics-open") {
@@ -3667,7 +3733,7 @@
       }
       const before = snapshot();
       if (id && !PHONICS.openLesson(id, Store.phonics())) {
-        toast(/^l1[b-e]$/.test(id) ? "请先完成上一节。" : (id === "l2b" || id === "l2c" ? "请先完成上一批声母。" : "请先完成上一课。"));
+        toast(/^l1[b-e]$/.test(id) ? "请先完成上一课。" : (id === "l2b" || id === "l2c" ? "请先完成上一批声母。" : "请先完成上一单元。"));
         return;
       }
       UI.phonics.lesson = id;
@@ -3790,9 +3856,10 @@
       return;
     }
     if (act === "phonics-pass") {
-      const fresh = Store.phonicsPass(button.dataset.id || "l4");
-      Store.award("phonics:practice", 5);
-      if (fresh) toast("音标入门已完成，今日打卡已记下。");
+      const kind = button.dataset.id || "l4";
+      const fresh = Store.phonicsPass(kind);
+      const xp = Store.award("phonics:practice", 5);
+      toastPhonicsCourseDone(kind, fresh, xp);
       draw();
       return;
     }
@@ -4147,6 +4214,14 @@
       const nextLessons = Number(best.dataset.lessons);
       if (Number(local.dailyLessons) === nextLessons) return;
       local.dailyLessons = nextLessons;
+      saveLocal();
+      return;
+    }
+    if (best.dataset.kind === "phonics") {
+      const nextPhonics = Number(best.dataset.lessons);
+      if (!(nextPhonics >= 1 && nextPhonics <= 5)) return;
+      if (Number(local.dailyPhonics) === nextPhonics) return;
+      local.dailyPhonics = nextPhonics;
       saveLocal();
       return;
     }
