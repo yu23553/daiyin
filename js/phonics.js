@@ -471,7 +471,9 @@
       bag.section[kind] = { studyIndex: 0, studyDone: false, quiz: null };
     }
     const row = bag.section[kind];
-    if (typeof row.studyIndex !== "number" || row.studyIndex < 0) row.studyIndex = 0;
+    // 同步/反序列化偶发把 studyIndex 变成字符串；不能直接清零，否则点「下一个」会跳回首词。
+    const n = Number(row.studyIndex);
+    row.studyIndex = isFinite(n) && n >= 0 ? Math.floor(n) : 0;
     row.studyDone = !!row.studyDone;
     return row;
   }
@@ -500,6 +502,19 @@
     const row = sectionState(bag, kind);
     row.studyIndex = 0;
     row.studyDone = false;
+    return row;
+  }
+
+  // 渲染时优先用会话内游标，避免 save→同步 settle 用旧 phonics 盖掉后闪回首词。
+  function studyProgress(ui, bag, kind) {
+    const row = sectionState(bag, kind);
+    if (ui && ui.studyKind === kind && typeof ui.studyIndex === "number" && isFinite(ui.studyIndex)) {
+      return {
+        studyIndex: Math.max(0, Math.floor(ui.studyIndex)),
+        studyDone: !!ui.studyDone,
+        quiz: row.quiz
+      };
+    }
     return row;
   }
 
@@ -538,7 +553,7 @@
     const index = Math.max(0, Math.min(4, letter.charCodeAt(0) - 97));
     const meta = TONE_SECTION_META[index] || { title: "本课", tip: "" };
     const words = toneStudyWords(index);
-    const prog = sectionState(bag, kind);
+    const prog = studyProgress(ui, bag, kind);
     const passed = (bag && bag.passed) || {};
     const sectionPassed = !!passed[kind];
     const quiz = ui.quiz && ui.quiz.kind === kind ? ui.quiz : null;
@@ -881,6 +896,7 @@
     buildThai: buildThai,
     TONE_NAME: TONE_NAME,
     sectionState: sectionState,
+    studyProgress: studyProgress,
     advanceStudy: advanceStudy,
     retreatStudy: retreatStudy,
     resetStudy: resetStudy,

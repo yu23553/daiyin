@@ -483,7 +483,7 @@
     draftName: "",
     lessonId: "",
     notesOpen: false,
-    phonics: { lesson: "", pane: "", batch: "a", quiz: null, deck: [], index: 0, flipped: false, deckDone: false, showLetter: false, build: { onset: "g", vowel: "aa", tone: "mid" }, point: null, pointThai: "" },
+    phonics: { lesson: "", pane: "", studyKind: "", studyIndex: 0, studyDone: false, batch: "a", quiz: null, deck: [], index: 0, flipped: false, deckDone: false, showLetter: false, build: { onset: "g", vowel: "aa", tone: "mid" }, point: null, pointThai: "" },
     nav: [],
     courseLevel: local.courseLevel || "A1",
     courseFilter: "全部",
@@ -3266,6 +3266,19 @@
     }
   }
 
+  function syncPhonicsStudyCursor(kind, row) {
+    if (!/^l1[a-e]$/.test(String(kind || ""))) {
+      UI.phonics.studyKind = "";
+      UI.phonics.studyIndex = 0;
+      UI.phonics.studyDone = false;
+      return;
+    }
+    const prog = row || (window.PHONICS ? PHONICS.sectionState(Store.phonics(), kind) : { studyIndex: 0, studyDone: false });
+    UI.phonics.studyKind = kind;
+    UI.phonics.studyIndex = Math.max(0, Math.floor(Number(prog.studyIndex) || 0));
+    UI.phonics.studyDone = !!prog.studyDone;
+  }
+
   function persistToneSectionQuiz(quiz) {
     if (!quiz || !/^l1[a-e]$/.test(String(quiz.kind || ""))) return;
     const row = PHONICS.sectionState(Store.phonics(), quiz.kind);
@@ -3840,6 +3853,7 @@
           UI.phonics.lesson = id && PHONICS.openLesson(id, Store.phonics()) ? id : "";
           UI.phonics.pane = "";
           UI.phonics.quiz = restoreToneSectionQuiz(UI.phonics.lesson);
+          syncPhonicsStudyCursor(UI.phonics.lesson);
           UI.phonics.flipped = false;
           if (UI.phonics.lesson === "l4") {
             UI.phonics.deck = PHONICS.a1Deck();
@@ -3860,6 +3874,7 @@
       UI.phonics.lesson = id;
       UI.phonics.pane = "";
       UI.phonics.quiz = restoreToneSectionQuiz(id);
+      syncPhonicsStudyCursor(id);
       UI.phonics.flipped = false;
       if (id === "l4") {
         UI.phonics.deck = PHONICS.a1Deck();
@@ -3891,7 +3906,8 @@
       const kind = button.dataset.id || UI.phonics.lesson;
       if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
       if (button.disabled) return;
-      PHONICS.retreatStudy(Store.phonics(), kind);
+      const row = PHONICS.retreatStudy(Store.phonics(), kind);
+      syncPhonicsStudyCursor(kind, row);
       Store.phonicsSave();
       draw();
       return;
@@ -3899,7 +3915,8 @@
     if (act === "phonics-study-next") {
       const kind = button.dataset.id || UI.phonics.lesson;
       if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
-      PHONICS.advanceStudy(Store.phonics(), kind);
+      const row = PHONICS.advanceStudy(Store.phonics(), kind);
+      syncPhonicsStudyCursor(kind, row);
       Store.phonicsSave();
       draw();
       return;
@@ -3907,9 +3924,9 @@
     if (act === "phonics-study-reset") {
       const kind = button.dataset.id || UI.phonics.lesson;
       if (!/^l1[a-e]$/.test(kind) || !window.PHONICS) return;
-      PHONICS.resetStudy(Store.phonics(), kind);
-      const row = PHONICS.sectionState(Store.phonics(), kind);
+      const row = PHONICS.resetStudy(Store.phonics(), kind);
       row.quiz = null;
+      syncPhonicsStudyCursor(kind, row);
       Store.phonicsSave();
       UI.phonics.quiz = null;
       draw();

@@ -131,6 +131,7 @@
     }
     if (!state.phonics.passed || typeof state.phonics.passed !== "object") state.phonics.passed = {};
     if (!state.phonics.srs || typeof state.phonics.srs !== "object") state.phonics.srs = {};
+    if (!state.phonics.section || typeof state.phonics.section !== "object") state.phonics.section = {};
     state.synced = !!next.synced;
     state.deviceId = typeof next.deviceId === "string" ? next.deviceId : "";
     try {
@@ -413,11 +414,38 @@
     save({ silent: true });
   }
 
+  function mergePhonicsSection(localSection) {
+    if (!localSection || typeof localSection !== "object") return;
+    const bag = phonicsBag();
+    Object.keys(localSection).forEach(function (key) {
+      const loc = localSection[key];
+      if (!loc || typeof loc !== "object") return;
+      const rem = bag.section[key] && typeof bag.section[key] === "object" ? bag.section[key] : {};
+      const locIdx = Math.max(0, Math.floor(Number(loc.studyIndex) || 0));
+      const remIdx = Math.max(0, Math.floor(Number(rem.studyIndex) || 0));
+      bag.section[key] = {
+        studyIndex: Math.max(locIdx, remIdx),
+        studyDone: !!(loc.studyDone || rem.studyDone),
+        quiz: rem.quiz || loc.quiz || null
+      };
+    });
+  }
+
   function settle(serverState) {
     ensureLedger();
     const id = state.deviceId;
     const current = Object.assign(zeroPending(), state.ledger[id]);
+    // 推送往返前本地可能已前进 studyIndex；合并 section，避免 settle 后点「下一个」像跳回首词。
+    let localSection = null;
+    try {
+      localSection = state.phonics && state.phonics.section
+        ? JSON.parse(JSON.stringify(state.phonics.section))
+        : null;
+    } catch (err) {
+      localSection = null;
+    }
     applyState(serverState || blank());
+    mergePhonicsSection(localSection);
     const row = Object.assign(zeroPending(), state.ledger[id]);
     let extra = false;
     Object.keys(zeroPending()).forEach(function (key) {
